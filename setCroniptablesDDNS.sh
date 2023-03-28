@@ -41,9 +41,9 @@ fi
 IPrecordfile=${localport}[${targetDDNS}:${remoteport}]
 # 开机强制刷新一次
 chmod +x /etc/rc.d/rc.local
-echo "rm -f /root/$IPrecordfile" >> /etc/rc.d/rc.local
+#echo "rm -f /root/$IPrecordfile" >> /etc/rc.d/rc.local
 # 替换下面的localport remoteport targetDDNS
-echo "/bin/bash /usr/local/iptables4ddns.sh $localport $remoteport $targetDDNS $IPrecordfile &>> /root/iptables${localport}.log" >> /etc/rc.d/rc.local
+#echo "/bin/bash /usr/local/iptables4ddns.sh $localport $remoteport $targetDDNS $IPrecordfile &>> /root/iptables${localport}.log" >> /etc/rc.d/rc.local
 chmod +x /etc/rc.d/rc.local
 # 定时任务，每分钟检查一下
 echo "* * * * * root /usr/local/iptables4ddns.sh $localport $remoteport $targetDDNS $IPrecordfile &>> /root/iptables${localport}.log" >> /etc/crontab
