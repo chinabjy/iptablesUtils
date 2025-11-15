@@ -38,7 +38,7 @@ echo -n "远程端口号:" ; read remoteport
 echo -n "目标DDNS:" ; read targetDDNS
 echo -n "绑定的本地IP地址:" ; read localip
 # === 新增：询问允许访问的源IP网段 ===
-echo -n "允许访问的源IP网段（例如: 64.32.12.128/28）:" ; read allowed_source
+echo -n "允许访问的源IP网段（例如: 64.32.12.128/28 0.0.0.0/0）:" ; read allowed_source
 
 
 # 判断端口格式
