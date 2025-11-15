@@ -108,7 +108,7 @@ while true; do
                 continue
             fi
 
-            IPrecordfile=${localport}[${targetDDNS}:${remoteport}]
+            IPrecordfile=${localport}[${targetDDNS}:${remoteport}] # 记录字符串
 
             # 写入 rc.local 启动命令（避免重复）
             grep -F "/usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS" $RCLOCAL >/dev/null 2>&1 || \
@@ -147,24 +147,24 @@ while true; do
                 continue
             fi
 
-            # 删除 PREROUTING
+            # 删除 PREROUTING 规则（仅根据本地端口号）
             indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "dpt:$delport" | awk '{print $1}' | sort -r))
             for i in "${indices[@]}"; do
                 echo "删除 PREROUTING 规则 $i"
                 iptables -t nat -D PREROUTING "$i"
             done
 
-            # 删除 POSTROUTING
+            # 删除 POSTROUTING 规则（仅根据本地端口号）
             indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "dpt:$delport" | awk '{print $1}' | sort -r))
             for i in "${indices[@]}"; do
                 echo "删除 POSTROUTING 规则 $i"
                 iptables -t nat -D POSTROUTING "$i"
             done
 
-            # 删除 crontab 中对应规则（端口模糊匹配）
-            (crontab -l 2>/dev/null | grep -v "$delport") | crontab -
+            # 删除 crontab 中对应规则（仅匹配本地端口号）
+            (crontab -l 2>/dev/null | grep -v "dpt:$delport") | crontab -
 
-            # 删除 rc.local 中对应规则
+            # 删除 rc.local 中对应规则（仅匹配本地端口号）
             sed -i "\|$delport|d" $RCLOCAL
 
             echo -e "${green}端口 $delport 的转发规则已删除（iptables、crontab、rc.local）${black}"
