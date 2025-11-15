@@ -1,6 +1,7 @@
 #!/bin/bash
-# 随机暂停 1-30 秒
-sleep $((RANDOM % 20 + 1))
+# 暂停范围：0.000–3.000 秒
+sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*3}')"
+
 # 颜色定义
 RED="\033[31m"
 GREEN="\033[32m"
