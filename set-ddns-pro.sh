@@ -19,7 +19,7 @@ cd
 echo "正在安装依赖...."
 yum install -y wget bind-utils &> /dev/null
 cd /usr/local
-rm -f /usr/local/ddns-check.sh
+rm -f /usr/local/ddns-check-pro.sh
 wget https://raw.githubusercontent.com/chinabjy/iptablesUtils/master/ddns-check-pro.sh  &> /dev/null
 chmod +x /usr/local/ddns-check-pro.sh
 echo "Done!"
@@ -58,9 +58,9 @@ echo "/bin/bash /usr/local/ddns-check.sh $localport $localport $remoteport $targ
 chmod +x /etc/rc.d/rc.local
 # 定时任务，每分钟检查一下
 # 修改crontab任务行，添加最后一个参数 $allowed_source
-echo "* * * * * root /usr/local/ddns-check.sh $localport $remoteport $targetDDNS ${localport}[${targetDDNS}:${remoteport}] $localip $allowed_source &>> /root/iptables${localport}.log" >> /etc/crontab
+echo "* * * * * root /usr/local/ddns-check-pro.sh $localport $remoteport $targetDDNS ${localport}[${targetDDNS}:${remoteport}] $localip $allowed_source &>> /root/iptables${localport}.log" >> /etc/crontab
 
-#echo "* * * * * root /usr/local/ddns-check.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> /etc/crontab
+#echo "* * * * * root /usr/local/ddns-check-pro.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> /etc/crontab
 cd
 rm -f /root/$IPrecordfile
 bash /usr/local/ddns-check.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log
