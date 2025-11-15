@@ -11,6 +11,7 @@ remoteport=$2
 remotehost=$3
 tempFile=$4
 local=$5
+force_add=$6  # 用于标记是否绕过 IP 检查
 
 [ -z "$tempFile" ] && tempFile=remoteip
 
@@ -65,18 +66,21 @@ if [ -z "$remote" ]; then
     exit 1
 fi
 
-# 检查 IP 是否变化
-lastremote=$(cat /root/$tempFile 2>/dev/null)
-if [ "$lastremote" = "$remote" ]; then
-    echo "地址未变化，退出"
-    exit 0
+# 如果是绕过 IP 检查（force_add），不检查 IP 是否变化
+if [ "$force_add" != "force_add" ]; then
+    # 检查 IP 是否变化
+    lastremote=$(cat /root/$tempFile 2>/dev/null)
+    if [ "$lastremote" = "$remote" ]; then
+        echo "地址未变化，退出"
+        exit 0
+    fi
+
+    echo "last remote IP: $lastremote"
+    echo "new remote IP: $remote"
+    echo "$remote" > /root/$tempFile
 fi
 
-echo "last remote IP: $lastremote"
-echo "new remote IP: $remote"
-echo "$remote" > /root/$tempFile
-
-# 获取本机 IP
+# 获取本机 IP，如果传递了 local 参数，使用传递的值
 if [ -z "$local" ]; then
     local=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1 | grep -Ev '(^127\.|^10\.|^172\.1[6-9]|^172\.2[0-9]|^172\.3[0-1]|^192\.168\.)')
     [ -z "$local" ] && local=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1)
@@ -100,8 +104,6 @@ delete_old_rules() {
         iptables -t nat -D POSTROUTING "$i"
     done
 }
-
-delete_old_rules
 
 # 添加新规则
 iptables -t nat -A PREROUTING -p tcp --dport "$localport" -j DNAT --to-destination "$remote:$remoteport"
