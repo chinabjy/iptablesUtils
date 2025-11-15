@@ -2,8 +2,7 @@
 # 自动维护 iptables 转发规则，支持动态 DDNS
 # 适用系统：CentOS / Ubuntu / Debian 等
 
-# 暂停范围：0~10 秒，避免多个脚本冲突
-sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*10}')"
+
 
 # 参数
 localport=$1
@@ -68,6 +67,8 @@ fi
 
 # 如果是绕过 IP 检查（force_add），不检查 IP 是否变化
 if [ "$force_add" != "force_add" ]; then
+    # 暂停范围：0~10 秒，避免多个脚本冲突
+    sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*10}')"
     # 检查 IP 是否变化
     lastremote=$(cat /root/$tempFile 2>/dev/null)
     if [ "$lastremote" = "$remote" ]; then
