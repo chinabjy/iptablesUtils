@@ -161,8 +161,8 @@ while true; do
                 iptables -t nat -D POSTROUTING "$i"
             done
 
-            # 删除 crontab 中对应规则（仅匹配本地端口号）
-            (crontab -l 2>/dev/null | grep -v "dpt:$delport") | crontab -
+            # 删除 /etc/crontab 中对应规则（仅匹配本地端口号）
+            sed -i "/dpt:$delport/d" /etc/crontab
 
             # 删除 rc.local 中对应规则（仅匹配本地端口号）
             sed -i "\|$delport|d" $RCLOCAL
