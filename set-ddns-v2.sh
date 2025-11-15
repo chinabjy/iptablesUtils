@@ -111,8 +111,7 @@ while true; do
 
             # 添加 crontab 任务到系统级 crontab（/etc/crontab），避免重复
             cronjob="* * * * * root /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log"
-            grep -F "$cronjob" /etc/crontab >/dev/null 2>&1
-            if [ $? -ne 0 ]; then
+            if ! grep -qF "$cronjob" /etc/crontab; then
                 echo "$cronjob" >> /etc/crontab
                 echo -e "${green}成功将定时任务添加到 /etc/crontab。${black}"
             else
@@ -130,7 +129,7 @@ while true; do
             echo "POSTROUTING 转发规则:"
             iptables -t nat -L POSTROUTING -n --line-number | grep SNAT || echo "无"
             echo "crontab 定时任务:"
-            crontab -l | grep ddns-check-v2.sh || echo "无"
+            cat /etc/crontab | grep ddns-check-v2.sh || echo "无"
             echo "rc.local 任务:"
             grep ddns-check-v2.sh $RCLOCAL || echo "无"
             ;;
@@ -157,20 +156,9 @@ while true; do
             done
 
             # 删除 crontab 中对应规则（端口模糊匹配）
-            (crontab -l 2>/dev/null | grep -v "$delport") | crontab -
+            (grep -v "$delport" /etc/crontab) > /etc/crontab.tmp && mv /etc/crontab.tmp /etc/crontab
 
             # 删除 rc.local 中对应规则
             sed -i "\|$delport|d" $RCLOCAL
 
-            echo -e "${green}端口 $delport 的转发规则已删除（iptables、crontab、rc.local）${black}"
-            ;;
-
-        4)
-            exit 0
-            ;;
-
-        *)
-            echo -e "${red}无效选项${black}"
-            ;;
-    esac
-done
+            echo -e "${green}端口 $delport 的转发规则已删除（iptables、crontab、rc.local）${
