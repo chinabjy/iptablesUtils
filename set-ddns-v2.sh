@@ -161,4 +161,15 @@ while true; do
             # 删除 rc.local 中对应规则
             sed -i "\|$delport|d" $RCLOCAL
 
-            echo -e "${green}端口 $delport 的转发规则已删除（iptables、crontab、rc.local）${
+            echo -e "${green}端口 $delport 的转发规则已删除（iptables、crontab、rc.local）${black}"
+            ;;
+
+        4)
+            exit 0
+            ;;
+
+        *)
+            echo -e "${red}无效选项${black}"
+            ;;
+    esac
+done
