@@ -1,4 +1,4 @@
-#!/bin/bash
+-v#!/bin/bash
 
 red="\033[31m"
 black="\033[0m"
@@ -22,11 +22,11 @@ install_package() {
 
 install_package wget bind-utils dnsutils
 
-# 下载 ddns-check.sh
+# 下载 ddns-check-v2.sh
 cd /usr/local
-rm -f ddns-check.sh
+rm -f ddns-check-v2.sh
 wget -q https://raw.githubusercontent.com/chinabjy/iptablesUtils/master/ddns-check-v2.sh
-chmod +x ddns-check.sh
+chmod +x ddns-check-v2.sh
 
 # 获取本机 IP
 local=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1 | grep -Ev '(^127\.|^10\.|^172\.1[6-9]|^172\.2[0-9]|^172\.3[0-1]|^192\.168\.)')
