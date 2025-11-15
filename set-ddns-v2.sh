@@ -63,7 +63,11 @@ echo "/bin/bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $
 chmod +x $RCLOCAL
 
 # 添加定时任务
-(sudo crontab -l 2>/dev/null; echo "* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log") | sudo crontab -
+#(sudo crontab -l 2>/dev/null; echo "* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log") | sudo crontab -
+cron_job="* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log"
+sudo crontab -l 2>/dev/null | grep -F "$cron_job" >/dev/null 2>&1 || \
+(sudo crontab -l 2>/dev/null; echo "$cron_job") | sudo crontab -
+
 
 
 # 初始执行一次
