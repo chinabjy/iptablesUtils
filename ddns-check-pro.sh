@@ -72,7 +72,6 @@ delete_old_rules() {
     done
 }
 
-
 # 主脚本逻辑开始
 log_info "=== DDNS iptables转发脚本开始执行 ==="
 
