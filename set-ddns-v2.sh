@@ -109,13 +109,21 @@ while true; do
             grep -F "/usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS" $RCLOCAL >/dev/null 2>&1 || \
                 echo "/bin/bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> $RCLOCAL
 
-            # 添加 crontab
-            (crontab -l 2>/dev/null; echo "* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log") | crontab -
+            # 添加 crontab 任务到系统级 crontab（/etc/crontab），避免重复
+            cronjob="* * * * * root /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log"
+            grep -F "$cronjob" /etc/crontab >/dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                echo "$cronjob" >> /etc/crontab
+                echo -e "${green}成功将定时任务添加到 /etc/crontab。${black}"
+            else
+                echo -e "${green}定时任务已存在，无需重复添加。${black}"
+            fi
 
             # 初始执行一次
             bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log
             echo -e "${green}规则已创建，每分钟会自动检查 DDNS 并更新 iptables${black}"
             ;;
+
         2)
             echo "PREROUTING 转发规则:"
             iptables -t nat -L PREROUTING -n --line-number | grep DNAT || echo "无"
@@ -126,6 +134,7 @@ while true; do
             echo "rc.local 任务:"
             grep ddns-check-v2.sh $RCLOCAL || echo "无"
             ;;
+
         3)
             read -p "请输入需要删除的本地端口号: " delport
             if ! [[ "$delport" =~ ^[0-9]+$ ]]; then
@@ -155,9 +164,11 @@ while true; do
 
             echo -e "${green}端口 $delport 的转发规则已删除（iptables、crontab、rc.local）${black}"
             ;;
+
         4)
             exit 0
             ;;
+
         *)
             echo -e "${red}无效选项${black}"
             ;;
