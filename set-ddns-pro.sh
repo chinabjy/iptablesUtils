@@ -41,8 +41,16 @@ echo -n "绑定的本地IP地址:" ; read localip
 echo -n "允许访问的源IP网段（例如: 64.32.12.128/28）:" ; read allowed_source
 
 
-# 判断端口是否为数字
-echo "$localport"|[ -n "`sed -n '/^[0-9][0-9]*$/p'`" ] && echo $remoteport |[ -n "`sed -n '/^[0-9][0-9]*$/p'`" ]&& valid=true
+# 判断端口格式
+valid=false
+# 检查本地端口格式：纯数字 或 N-N 格式
+if echo "$localport" | grep -qxE '^[0-9]+(-[0-9]+)?$'; then
+    # 检查远程端口格式：纯数字 或 N-N 格式
+    if echo "$remoteport" | grep -qxE '^[0-9]+(-[0-9]+)?$'; then
+        valid=true
+    fi
+fi
+
 
 if [ "$valid" = "" ];then
    echo  -e "${red}本地端口和目标端口请输入数字！！${black}"
