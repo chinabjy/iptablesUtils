@@ -121,25 +121,30 @@ delete_old_rules $localport $remote $remoteport $allowed_source
 log_info "添加新规则..."
 
 
-# 智能选择端口匹配方式
+# 智能判断端口类型并构建相应的匹配条件
+# 判断是否为多端口（包含冒号:或逗号,）
 if echo "$localport" | grep -qE '[:,]'; then
-    # 当端口是范围（如40001:40005）或列表（如80,443）时，使用multiport模块
     dnat_port_match_tcp="-m multiport --dports $localport"
     dnat_port_match_udp="-m multiport --dports $localport"
     snat_port_match_tcp="-m multiport --dports $remoteport"
     snat_port_match_udp="-m multiport --dports $remoteport"
+    # 对于多端口的一对一映射，DNAT 目标只写IP
+    dnat_target="$remote"
 else
-    # 当端口是单个数字时，直接使用--dport
+    # 单端口，不使用 multiport 模块
     dnat_port_match_tcp="--dport $localport"
     dnat_port_match_udp="--dport $localport"
     snat_port_match_tcp="--dport $remoteport"
     snat_port_match_udp="--dport $remoteport"
+    # 对于单端口，DNAT 目标需要明确指定端口
+    dnat_target="$remote:$remoteport"
 fi
 
-# 使用变量动态构建规则
-iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p tcp $dnat_port_match_tcp -j DNAT --to-destination $remote
-iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p udp $dnat_port_match_udp -j DNAT --to-destination $remote
+# 使用变量动态构建 PREROUTING (DNAT) 规则
+iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p tcp $dnat_port_match_tcp -j DNAT --to-destination $dnat_target
+iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p udp $dnat_port_match_udp -j DNAT --to-destination $dnat_target
 
+# 使用变量动态构建 POSTROUTING (SNAT) 规则
 iptables_no_dup -t nat -A POSTROUTING -p tcp -d $remote $snat_port_match_tcp -j SNAT --to-source $local
 iptables_no_dup -t nat -A POSTROUTING -p udp -d $remote $snat_port_match_udp -j SNAT --to-source $local
 
