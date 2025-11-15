@@ -1,6 +1,7 @@
 #!/bin/bash
-# 暂停范围：0.000–3.000 秒
-sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*3}')"
+# 暂停范围：0.000–10.000 秒
+sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*10}')"
+
 
 # 颜色定义
 RED="\033[31m"
