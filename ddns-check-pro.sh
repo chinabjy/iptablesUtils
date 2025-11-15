@@ -50,9 +50,9 @@ delete_old_rules() {
     local remoteport=$3
     local allowed_source=$4
     
-    log_info "开始删除旧规则: 端口 $localport->$remoteport, 目标 $remote"
+    log_info "开始删除旧规则: 端口 $localport->$remoteport, 目标 $remote, 源 $allowed_source"
     
-    # 删除PREROUTING规则
+    # 删除PREROUTING规则 (保持不变，你的逻辑已经很精确)
     for proto in tcp udp; do
         local rules=$(iptables -t nat -L PREROUTING --line-numbers -n | awk -v port="$localport" -v src="$allowed_source" -v p="$proto" '$0 ~ p && $0 ~ "dpt:" port " " && $0 ~ src {print $1}' | tac)
         for rule_num in $rules; do
@@ -61,15 +61,17 @@ delete_old_rules() {
         done
     done
     
-    # 删除POSTROUTING规则
+    # 删除POSTROUTING规则 (增强匹配精确度)
     for proto in tcp udp; do
-        local rules=$(iptables -t nat -L POSTROUTING --line-numbers -n | awk -v rmt="$remote" -v rmt_port="$remoteport" -v p="$proto" '$0 ~ p && $0 ~ rmt && $0 ~ "dpt:" rmt_port {print $1}' | tac)
+        # 关键修改：在匹配条件中加入源IP ($local) 和更精确的端口匹配
+        local rules=$(iptables -t nat -L POSTROUTING --line-numbers -n | awk -v rmt="$remote" -v rmt_port="$remoteport" -v src_ip="$local" -v p="$proto" '$0 ~ p && $0 ~ rmt && $0 ~ "dpt:" rmt_port " " && $0 ~ src_ip {print $1}' | tac)
         for rule_num in $rules; do
             log_info "删除POSTROUTING规则 #$rule_num"
             iptables -t nat -D POSTROUTING $rule_num
         done
     done
 }
+
 
 # 主脚本逻辑开始
 log_info "=== DDNS iptables转发脚本开始执行 ==="
