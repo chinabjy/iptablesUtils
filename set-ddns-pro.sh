@@ -54,7 +54,7 @@ IPrecordfile=${localport}[${targetDDNS}:${remoteport}]
 chmod +x /etc/rc.d/rc.local
 echo "rm -f /root/$IPrecordfile" >> /etc/rc.d/rc.local
 # 替换下面的localport remoteport targetDDNS
-echo "/bin/bash /usr/local/ddns-check.sh $localport $localport $remoteport $targetDDNS ${localport}[${targetDDNS}:${remoteport}] $localip $allowed_source &>> /root/iptables${localport}.log" >> /etc/rc.d/rc.local
+echo "/bin/bash /usr/local/ddns-check.sh $localport $remoteport $targetDDNS ${localport}[${targetDDNS}:${remoteport}] $localip $allowed_source &>> /root/iptables${localport}.log" >> /etc/rc.d/rc.local
 chmod +x /etc/rc.d/rc.local
 # 定时任务，每分钟检查一下
 # 修改crontab任务行，添加最后一个参数 $allowed_source
