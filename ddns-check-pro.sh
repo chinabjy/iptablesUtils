@@ -1,16 +1,4 @@
 #!/bin/bash
-
-# 在脚本开头检查锁文件
-LOCK_FILE="/var/run/ddns-iptables.lock"
-if [ -f "$LOCK_FILE" ]; then
-    log_info "另一个实例正在运行，退出。"
-    exit 0
-fi
-# 创建锁文件
-trap 'rm -f "$LOCK_FILE"; exit' INT TERM EXIT
-echo $$ > "$LOCK_FILE"
-
-
 # 颜色定义
 RED="\033[31m"
 GREEN="\033[32m"
@@ -34,6 +22,35 @@ log_error() {
 log_info() {
     log "${BLUE}[INFO]${RESET} $1"
 }
+
+# 在脚本开头检查锁文件
+LOCK_FILE="/var/run/ddns-iptables.lock"
+LOCK_TIMEOUT=60  # 设置锁超时时间为60秒
+
+# 1. 检查锁文件是否存在，并判断是否已超时
+if [ -f "$LOCK_FILE" ]; then
+    lock_pid=$(cat "$LOCK_FILE" 2>/dev/null)
+    # 检查锁文件中的PID是否仍在运行
+    if [ -n "$lock_pid" ] && kill -0 "$lock_pid" 2>/dev/null; then
+        # PID存在，说明确实有另一个实例在运行
+        log_info "另一个实例（PID: $lock_pid）正在运行，退出。"
+        exit 0
+    else
+        # PID不存在，说明是残留的锁文件（如上一次脚本崩溃）
+        log_info "发现残留的锁文件，已超时或进程不存在。清理并继续。"
+        rm -f "$LOCK_FILE"
+    fi
+fi
+
+# 2. 创建新的锁文件
+echo $$ > "$LOCK_FILE" || {
+    log_error "无法创建锁文件 $LOCK_FILE。退出。"
+    exit 1
+}
+
+# 3. 设置信号捕获，确保脚本退出时（无论正常或异常）能删除锁文件
+trap 'rm -f "$LOCK_FILE"; exit' INT TERM EXIT
+
 
 # 首先定义所有函数
 iptables_no_dup() {
