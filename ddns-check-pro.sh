@@ -117,9 +117,3 @@ iptables -t nat -A PREROUTING -s $allowed_source -p tcp --dport $localport -j DN
 iptables -t nat -A PREROUTING -s $allowed_source -p udp --dport $localport -j DNAT --to-destination $remote:$remoteport
 iptables -t nat -A POSTROUTING -p tcp -d $remote --dport $remoteport -j SNAT --to-source $local
 iptables -t nat -A POSTROUTING -p udp -d $remote --dport $remoteport -j SNAT --to-source $local
-
-#iptables -t nat -A PREROUTING -p tcp --dport $localport -j DNAT --to-destination $remote:$remoteport
-#iptables -t nat -A PREROUTING -p udp --dport $localport -j DNAT --to-destination $remote:$remoteport
-#iptables -t nat -A POSTROUTING -p tcp -d $remote --dport $remoteport -j SNAT --to-source $local
-#iptables -t nat -A POSTROUTING -p udp -d $remote --dport $remoteport -j SNAT --to-source $local
-
