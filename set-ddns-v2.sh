@@ -97,6 +97,11 @@ while true; do
             read -p "目标 DDNS: " targetDDNS
             read -p "绑定的本地IP地址: " localip
 
+            # 如果没有输入本地 IP，则使用自动获取的 IP 地址
+            if [ -z "$localip" ]; then
+                localip=$local
+            fi
+
             # 验证端口
             if ! [[ "$localport" =~ ^[0-9]+$ ]] || ! [[ "$remoteport" =~ ^[0-9]+$ ]]; then
                 echo -e "${red}端口请输入数字！！${black}"
@@ -111,8 +116,7 @@ while true; do
 
             # 添加 crontab 任务到系统级 crontab（避免重复）
             cronjob="* * * * * root /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log"
-            grep -F "$cronjob" /etc/crontab >/dev/null 2>&1
-            if [ $? -ne 0 ]; then
+            if ! grep -F "$cronjob" /etc/crontab >/dev/null 2>&1; then
                 echo "$cronjob" >> /etc/crontab
                 echo -e "${green}成功将定时任务添加到 /etc/crontab。${black}"
             else
