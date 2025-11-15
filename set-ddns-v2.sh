@@ -109,17 +109,19 @@ while true; do
             grep -F "/usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS" $RCLOCAL >/dev/null 2>&1 || \
                 echo "/bin/bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> $RCLOCAL
 
-            # 添加 crontab 任务到系统级 crontab（/etc/crontab），避免重复
+            # 添加 crontab 任务到系统级 crontab（避免重复）
             cronjob="* * * * * root /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log"
-            if ! grep -qF "$cronjob" /etc/crontab; then
+            grep -F "$cronjob" /etc/crontab >/dev/null 2>&1
+            if [ $? -ne 0 ]; then
                 echo "$cronjob" >> /etc/crontab
                 echo -e "${green}成功将定时任务添加到 /etc/crontab。${black}"
             else
                 echo -e "${green}定时任务已存在，无需重复添加。${black}"
             fi
 
-            # 初始执行一次
-            bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log
+            # 强制添加规则，绕过 IP 检查
+            bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip force_add
+
             echo -e "${green}规则已创建，每分钟会自动检查 DDNS 并更新 iptables${black}"
             ;;
 
@@ -156,7 +158,7 @@ while true; do
             done
 
             # 删除 crontab 中对应规则（端口模糊匹配）
-            (grep -v "$delport" /etc/crontab) > /etc/crontab.tmp && mv /etc/crontab.tmp /etc/crontab
+            (crontab -l 2>/dev/null | grep -v "$delport") | crontab -
 
             # 删除 rc.local 中对应规则
             sed -i "\|$delport|d" $RCLOCAL
