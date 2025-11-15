@@ -30,7 +30,7 @@ if [ "${local}" = "" ]; then
 	local=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1 )
 fi
 echo  local-ip: $local
-echo  重新设置iptables转发，支持多端口，连续多端口用冒号连接比（10001:10005）不连续多端口用，连接（80,443,55）
+echo  重新设置iptables转发，支持多端口(最大数量15个)，连续多端口用冒号连接比（10001:10005）不连续多端口用，连接（80,443,55）
 
 # ... 脚本原有的交互部分 ...
 echo -n "本地端口号:" ; read localport
