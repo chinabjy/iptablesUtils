@@ -63,9 +63,10 @@ echo "/bin/bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $
 chmod +x $RCLOCAL
 
 # 添加定时任务
-(crontab -l 2>/dev/null; echo "* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log") | crontab -
+(sudo crontab -l 2>/dev/null; echo "* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log") | sudo crontab -
+
 
 # 初始执行一次
-bash /usr/local/ddns-check.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log
+bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log
 
 echo "done! 每分钟都会检查 DDNS 的 IP 并自动更新 iptables。"
