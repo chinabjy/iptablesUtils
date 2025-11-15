@@ -105,14 +105,14 @@ fi
 log_success "域名解析成功: $remotehost -> $remote"
 
 # 检查IP变化
-lastremote=$(cat /root/$tempFile 2>/dev/null)
+lastremote=$(cat "/root/$tempFile" 2>/dev/null)
 if [ "$lastremote" = "$remote" ]; then
     log_info "IP地址未变化 ($remote)，退出脚本"
     exit 0
 fi
 
 log_info "检测到IP变化: 旧IP: $lastremote → 新IP: $remote"
-echo "$remote" > /root/$tempFile
+echo "$remote" > "/root/$tempFile"
 
 # 执行规则更新
 log_info "开始更新iptables规则..."
