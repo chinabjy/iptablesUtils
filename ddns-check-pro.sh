@@ -119,8 +119,13 @@ log_info "开始更新iptables规则..."
 delete_old_rules $localport $remote $remoteport $allowed_source
 
 log_info "添加新规则..."
-iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p tcp --dport $localport -j DNAT --to-destination $remote:$remoteport
-iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p udp --dport $localport -j DNAT --to-destination $remote:$remoteport
+# 对于TCP协议，使用multiport模块
+iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p tcp -m multiport --dport $localport -j DNAT --to-destination $remote:$remoteport
+# 对于UDP协议，同样使用multiport模块
+iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p udp -m multiport --dport $localport -j DNAT --to-destination $remote:$remoteport
+
+#iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p tcp --dport $localport -j DNAT --to-destination $remote:$remoteport
+#iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p udp --dport $localport -j DNAT --to-destination $remote:$remoteport
 iptables_no_dup -t nat -A POSTROUTING -p tcp -d $remote --dport $remoteport -j SNAT --to-source $local
 iptables_no_dup -t nat -A POSTROUTING -p udp -d $remote --dport $remoteport -j SNAT --to-source $local
 
