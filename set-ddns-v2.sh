@@ -162,7 +162,8 @@ while true; do
             done
 
             # 删除 /etc/crontab 中对应规则（仅匹配本地端口号）
-            sed -i "/dpt:$delport/d" /etc/crontab
+            sed -i "/\b$delport\b/d" /etc/crontab
+
 
             # 删除 rc.local 中对应规则（仅匹配本地端口号）
             sed -i "\|$delport|d" $RCLOCAL
