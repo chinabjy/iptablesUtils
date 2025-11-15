@@ -119,19 +119,31 @@ log_info "开始更新iptables规则..."
 delete_old_rules $localport $remote $remoteport $allowed_source
 
 log_info "添加新规则..."
-# 对于TCP协议，使用multiport模块
-# 对于UDP协议，同样使用multiport模块
-# 修改后（正确）:
-# 对于TCP
-iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p tcp -m multiport --dports $localport -j DNAT --to-destination $remote
-# 对于UDP
-iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p udp -m multiport --dports $localport -j DNAT --to-destination $remote
 
 
-#iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p tcp --dport $localport -j DNAT --to-destination $remote:$remoteport
-#iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p udp --dport $localport -j DNAT --to-destination $remote:$remoteport
-iptables_no_dup -t nat -A POSTROUTING -p tcp -d $remote --dport $remoteport -j SNAT --to-source $local
-iptables_no_dup -t nat -A POSTROUTING -p udp -d $remote --dport $remoteport -j SNAT --to-source $local
+# 智能选择端口匹配方式
+if echo "$localport" | grep -qE '[:,]'; then
+    # 当端口是范围（如40001:40005）或列表（如80,443）时，使用multiport模块
+    dnat_port_match_tcp="-m multiport --dports $localport"
+    dnat_port_match_udp="-m multiport --dports $localport"
+    snat_port_match_tcp="-m multiport --dports $remoteport"
+    snat_port_match_udp="-m multiport --dports $remoteport"
+else
+    # 当端口是单个数字时，直接使用--dport
+    dnat_port_match_tcp="--dport $localport"
+    dnat_port_match_udp="--dport $localport"
+    snat_port_match_tcp="--dport $remoteport"
+    snat_port_match_udp="--dport $remoteport"
+fi
+
+# 使用变量动态构建规则
+iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p tcp $dnat_port_match_tcp -j DNAT --to-destination $remote
+iptables_no_dup -t nat -A PREROUTING -s $allowed_source -p udp $dnat_port_match_udp -j DNAT --to-destination $remote
+
+iptables_no_dup -t nat -A POSTROUTING -p tcp -d $remote $snat_port_match_tcp -j SNAT --to-source $local
+iptables_no_dup -t nat -A POSTROUTING -p udp -d $remote $snat_port_match_udp -j SNAT --to-source $local
+
+
 
 # 验证结果
 log_info "验证规则配置..."
