@@ -1,6 +1,7 @@
 #! /bin/bash
 # rm -f iptables4ddns.sh;wget  https://raw.githubusercontent.com/arloor/iptablesUtils/master/iptables4ddns.sh;bash iptables4ddns.sh $localport $remoteport $remotehost [ $remoteIpTempfile——暂存ddns的目标ip,用于定时任务判断时候需要更新iptables转发 ];
-
+# 暂停范围：0.000–10.000 秒
+sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*10}')"
 
 
 localport=$1  #中转端口，自行修改
