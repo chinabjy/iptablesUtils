@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# 在脚本开头检查锁文件
+LOCK_FILE="/var/run/ddns-iptables.lock"
+if [ -f "$LOCK_FILE" ]; then
+    log_info "另一个实例正在运行，退出。"
+    exit 0
+fi
+# 创建锁文件
+trap 'rm -f "$LOCK_FILE"; exit' INT TERM EXIT
+echo $$ > "$LOCK_FILE"
+
+
 # 颜色定义
 RED="\033[31m"
 GREEN="\033[32m"
