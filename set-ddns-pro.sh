@@ -66,8 +66,7 @@ echo "/bin/bash /usr/local/ddns-check.sh $localport $remoteport $targetDDNS ${lo
 chmod +x /etc/rc.d/rc.local
 # 定时任务，每分钟检查一下
 # 修改crontab任务行，添加最后一个参数 $allowed_source
-echo "* * * * * root /usr/local/ddns-check-pro.sh $localport $remoteport $targetDDNS ${localport}[${targetDDNS}:${remoteport}] $localip $allowed_source &>> /root/iptables${localport}.log" >> /etc/crontab
-
+echo "* * * * * root sleep $(( RANDOM % 30 ));  /usr/local/ddns-check-pro.sh $localport $remoteport $targetDDNS ${localport}[${targetDDNS}:${remoteport}] $localip $allowed_source &>> /root/iptables${localport}.log" >> /etc/crontab
 #echo "* * * * * root /usr/local/ddns-check-pro.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> /etc/crontab
 cd
 rm -f /root/$IPrecordfile
