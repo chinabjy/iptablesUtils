@@ -1,14 +1,20 @@
 #!/bin/bash
+# set-ddns-v2.sh
+# 自动维护 DDNS iptables 转发规则，支持 CentOS / Ubuntu / Debian
+# 功能：
+# 1. 新建转发规则
+# 2. 查看现有转发规则
+# 3. 删除转发规则（按端口号彻底删除，包括 iptables、crontab、rc.local）
 
 red="\033[31m"
+green="\033[32m"
 black="\033[0m"
 
 if [ "$EUID" -ne 0 ]; then
-    echo -e "${red}请使用root用户执行本脚本!!${black}"
+    echo -e "${red}请使用 root 用户执行本脚本!!${black}"
     exit 1
 fi
 
-echo "正在检测系统并安装依赖..."
 install_package() {
     if command -v yum >/dev/null 2>&1; then
         yum install -y "$@" &>/dev/null
@@ -20,7 +26,8 @@ install_package() {
     fi
 }
 
-install_package wget bind-utils dnsutils
+echo "正在检测系统并安装依赖..."
+install_package wget bind-utils dnsutils cron
 
 # 下载 ddns-check-v2.sh
 cd /usr/local
@@ -28,26 +35,7 @@ rm -f ddns-check-v2.sh
 wget -q https://raw.githubusercontent.com/chinabjy/iptablesUtils/master/ddns-check-v2.sh
 chmod +x ddns-check-v2.sh
 
-# 获取本机 IP
-local=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1 | grep -Ev '(^127\.|^10\.|^172\.1[6-9]|^172\.2[0-9]|^172\.3[0-1]|^192\.168\.)')
-[ -z "$local" ] && local=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1)
-echo "本机 IP: $local"
-
-# 用户输入
-read -p "本地端口号: " localport
-read -p "远程端口号: " remoteport
-read -p "目标 DDNS: " targetDDNS
-read -p "绑定的本地IP地址: " localip
-
-# 验证端口
-if ! [[ "$localport" =~ ^[0-9]+$ ]] || ! [[ "$remoteport" =~ ^[0-9]+$ ]]; then
-    echo -e "${red}本地端口和目标端口请输入数字！！${black}"
-    exit 1
-fi
-
-IPrecordfile=${localport}[${targetDDNS}:${remoteport}]
-
-# 添加开机启动
+# 确保 rc.local 可用
 if [ -f /etc/rc.d/rc.local ]; then
     RCLOCAL=/etc/rc.d/rc.local
 elif [ -f /etc/rc.local ]; then
@@ -57,12 +45,11 @@ else
     echo "#!/bin/bash" > $RCLOCAL
     chmod +x $RCLOCAL
 fi
-
 chmod +x $RCLOCAL
 
 # 检查 systemd 下 rc-local 服务是否启用
 if command -v systemctl >/dev/null 2>&1; then
-    if ! systemctl is-enabled rc-local >/dev/null 2>&1 2>/dev/null; then
+    if ! systemctl is-enabled rc-local >/dev/null 2>&1; then
         if [ ! -f /etc/systemd/system/rc-local.service ]; then
             cat <<'EOF' > /etc/systemd/system/rc-local.service
 [Unit]
@@ -88,14 +75,91 @@ EOF
     fi
 fi
 
-# 写入启动命令到 rc.local（避免重复）
-grep -F "/usr/local/ddns-check-v2.sh" $RCLOCAL >/dev/null 2>&1 || \
-    echo "/bin/bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> $RCLOCAL
+# 获取本机 IP
+local=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1 | grep -Ev '(^127\.|^10\.|^172\.1[6-9]|^172\.2[0-9]|^172\.3[0-1]|^192\.168\.)')
+[ -z "$local" ] && local=$(ip -o -4 addr list | grep -Ev '\s(docker|lo)' | awk '{print $4}' | cut -d/ -f1)
+echo "本机 IP: $local"
 
-# 添加定时任务
-(crontab -l 2>/dev/null; echo "* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log") | crontab -
+# 主菜单
+while true; do
+    echo
+    echo "请选择操作："
+    echo "1. 新建转发规则"
+    echo "2. 查看现有转发规则"
+    echo "3. 删除转发规则"
+    echo "4. 退出"
+    read -p "输入选项 [1-4]: " choice
 
-# 初始执行一次
-bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log
+    case $choice in
+        1)
+            read -p "本地端口号: " localport
+            read -p "远程端口号: " remoteport
+            read -p "目标 DDNS: " targetDDNS
+            read -p "绑定的本地IP地址: " localip
 
-echo "done! 每分钟都会检查 DDNS 的 IP 并自动更新 iptables。"
+            # 验证端口
+            if ! [[ "$localport" =~ ^[0-9]+$ ]] || ! [[ "$remoteport" =~ ^[0-9]+$ ]]; then
+                echo -e "${red}端口请输入数字！！${black}"
+                continue
+            fi
+
+            IPrecordfile=${localport}[${targetDDNS}:${remoteport}]
+
+            # 写入 rc.local 启动命令（避免重复）
+            grep -F "/usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS" $RCLOCAL >/dev/null 2>&1 || \
+                echo "/bin/bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> $RCLOCAL
+
+            # 添加 crontab
+            (crontab -l 2>/dev/null; echo "* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log") | crontab -
+
+            # 初始执行一次
+            bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log
+            echo -e "${green}规则已创建，每分钟会自动检查 DDNS 并更新 iptables${black}"
+            ;;
+        2)
+            echo "PREROUTING 转发规则:"
+            iptables -t nat -L PREROUTING -n --line-number | grep DNAT || echo "无"
+            echo "POSTROUTING 转发规则:"
+            iptables -t nat -L POSTROUTING -n --line-number | grep SNAT || echo "无"
+            echo "crontab 定时任务:"
+            crontab -l | grep ddns-check-v2.sh || echo "无"
+            echo "rc.local 任务:"
+            grep ddns-check-v2.sh $RCLOCAL || echo "无"
+            ;;
+        3)
+            read -p "请输入需要删除的本地端口号: " delport
+            if ! [[ "$delport" =~ ^[0-9]+$ ]]; then
+                echo -e "${red}端口请输入数字！！${black}"
+                continue
+            fi
+
+            # 删除 PREROUTING
+            indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "dpt:$delport" | awk '{print $1}' | sort -r))
+            for i in "${indices[@]}"; do
+                echo "删除 PREROUTING 规则 $i"
+                iptables -t nat -D PREROUTING "$i"
+            done
+
+            # 删除 POSTROUTING
+            indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "dpt:$delport" | awk '{print $1}' | sort -r))
+            for i in "${indices[@]}"; do
+                echo "删除 POSTROUTING 规则 $i"
+                iptables -t nat -D POSTROUTING "$i"
+            done
+
+            # 删除 crontab 中对应规则（端口模糊匹配）
+            (crontab -l 2>/dev/null | grep -v "$delport") | crontab -
+
+            # 删除 rc.local 中对应规则
+            sed -i "\|$delport|d" $RCLOCAL
+
+            echo -e "${green}端口 $delport 的转发规则已删除（iptables、crontab、rc.local）${black}"
+            ;;
+        4)
+            exit 0
+            ;;
+        *)
+            echo -e "${red}无效选项${black}"
+            ;;
+    esac
+done
