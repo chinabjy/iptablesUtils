@@ -1,4 +1,6 @@
 #!/bin/bash
+# 随机暂停 1-30 秒
+sleep $((RANDOM % 20 + 1))
 # 颜色定义
 RED="\033[31m"
 GREEN="\033[32m"
