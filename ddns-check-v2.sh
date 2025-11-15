@@ -2,7 +2,7 @@
 # 自动维护 iptables 转发规则，支持动态 DDNS
 # 适用系统：CentOS / Ubuntu / Debian 等
 
-# 暂停范围：0~10 秒，避免多个脚本冲突
+# 暂停范围：0~10 秒，避免多个脚本同时执行冲突
 sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*10}')"
 
 # 参数
@@ -26,7 +26,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 if [ -z "$remotehost" ]; then
-    echo -e "${red}Usage: $0 localport remoteport remotehost [tempFile]${black}"
+    echo -e "${red}Usage: $0 localport remoteport remotehost [tempFile] [localIP]${black}"
     exit 1
 fi
 
@@ -69,18 +69,20 @@ echo "更新 iptables 规则..."
 
 # 删除旧规则
 delete_old_rules() {
-    # PREROUTING
-    local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "dpt:$localport" | awk '{print $1}' | sort -r))
-    for i in "${indices[@]}"; do
-        echo "删除 PREROUTING 规则 $i"
-        iptables -t nat -D PREROUTING "$i"
+    # PREROUTING: 删除本地端口相关 DNAT 规则
+    while true; do
+        idx=$(iptables -t nat -L PREROUTING -n --line-number | grep "dpt:$localport" | awk '{print $1}' | tail -n1)
+        [ -z "$idx" ] && break
+        echo "删除 PREROUTING 规则 $idx"
+        iptables -t nat -D PREROUTING "$idx"
     done
 
-    # POSTROUTING
-    indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "$remote" | grep "$remoteport" | awk '{print $1}' | sort -r))
-    for i in "${indices[@]}"; do
-        echo "删除 POSTROUTING 规则 $i"
-        iptables -t nat -D POSTROUTING "$i"
+    # POSTROUTING: 删除远程 IP 和端口相关 SNAT 规则
+    while true; do
+        idx=$(iptables -t nat -L POSTROUTING -n --line-number | grep "$remote" | grep "$remoteport" | awk '{print $1}' | tail -n1)
+        [ -z "$idx" ] && break
+        echo "删除 POSTROUTING 规则 $idx"
+        iptables -t nat -D POSTROUTING "$idx"
     done
 }
 
