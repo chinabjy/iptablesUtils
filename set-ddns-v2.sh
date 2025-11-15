@@ -1,4 +1,4 @@
--v#!/bin/bash
+#!/bin/bash
 
 red="\033[31m"
 black="\033[0m"
@@ -58,17 +58,42 @@ else
     chmod +x $RCLOCAL
 fi
 
-echo "rm -f /root/$IPrecordfile" >> $RCLOCAL
-echo "/bin/bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> $RCLOCAL
 chmod +x $RCLOCAL
 
+# 检查 systemd 下 rc-local 服务是否启用
+if command -v systemctl >/dev/null 2>&1; then
+    if ! systemctl is-enabled rc-local >/dev/null 2>&1 2>/dev/null; then
+        if [ ! -f /etc/systemd/system/rc-local.service ]; then
+            cat <<'EOF' > /etc/systemd/system/rc-local.service
+[Unit]
+Description=/etc/rc.local Compatibility
+ConditionPathExists=/etc/rc.local
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/etc/rc.local start
+TimeoutSec=0
+StandardOutput=tty
+RemainAfterExit=yes
+SysVStartPriority=99
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        fi
+        chmod +x /etc/rc.local
+        systemctl enable rc-local
+        systemctl start rc-local
+    fi
+fi
+
+# 写入启动命令到 rc.local（避免重复）
+grep -F "/usr/local/ddns-check-v2.sh" $RCLOCAL >/dev/null 2>&1 || \
+    echo "/bin/bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> $RCLOCAL
+
 # 添加定时任务
-#(sudo crontab -l 2>/dev/null; echo "* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log") | sudo crontab -
-cron_job="* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log"
-sudo crontab -l 2>/dev/null | grep -F "$cron_job" >/dev/null 2>&1 || \
-(sudo crontab -l 2>/dev/null; echo "$cron_job") | sudo crontab -
-
-
+(crontab -l 2>/dev/null; echo "* * * * * /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log") | crontab -
 
 # 初始执行一次
 bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log
