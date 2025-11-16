@@ -158,9 +158,10 @@ while true; do
             
             # 删除 POSTROUTING 规则（按用户提供的本地端口号精确匹配）
             # 读取 /etc/crontab 中的任务
-            echo "检查的行: $line"  # 添加这一行用于调试
+
             while read -r line; do
                 # 检查该行是否包含 ddns-check-v2.sh 任务
+                echo "检查的行: $line"  # 添加这一行用于调试
                 if echo "$line" | grep -q "ddns-check-v2.sh"; then
                     # 提取本地端口号、本地IP、远程端口号、目标DDNS
                     localport=$(echo "$line" | awk '{print $6}')
