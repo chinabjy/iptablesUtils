@@ -77,12 +77,23 @@ check_sysctl() {
 # 调用检查 sysctl 和 IP 转发
 check_sysctl
 
-# 解析 DDNS 域名
-remote=$(getent hosts "$remotehost" | awk '{print $1}' | head -n1)
-if [ -z "$remote" ]; then
-    echo -e "${red}无法解析 $remotehost，请检查域名！${black}"
-    exit 1
-fi
+   # 检查变量 $remotehost 是否是 IP 地址
+    if [[ "$remotehost" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        # 如果是 IP 地址，直接赋值给 remote
+        remote="$remotehost"
+        echo -e "${green}使用 IP 地址: $remote${black}"
+    else
+        # 如果是域名，进行解析
+        remote=$(getent hosts "$remotehost" | awk '{print $1}' | head -n1)
+        if [ -z "$remote" ]; then
+            echo -e "${red}无法解析 $remotehost，请检查域名！${black}"
+            exit 1
+        else
+            echo -e "${green}使用解析后的 IP 地址: $remote${black}"
+        fi
+    fi
+
+
 
 # 如果是绕过 IP 检查（force_add），不检查 IP 是否变化
 if [ "$force_add" != "force_add" ]; then
