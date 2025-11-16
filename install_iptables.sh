@@ -74,18 +74,36 @@ install_iptables() {
     esac
 }
 
-# 启用并启动 iptables 服务
-enable_iptables() {
-    case "$PACKAGE_MANAGER" in
-        apt|yum)
-            log_info "启用并启动 iptables 服务..."
-            sudo systemctl enable iptables
-            sudo systemctl start iptables
-            ;;
-        *)
-            log_warn "不需要启用 iptables 服务"
-            ;;
-    esac
+# 禁用 firewalld （如果安装了的话）
+disable_firewalld() {
+    if command -v firewall-cmd > /dev/null 2>&1; then
+        log_info "禁用 firewalld 服务..."
+        sudo systemctl stop firewalld
+        sudo systemctl disable firewalld
+    else
+        log_warn "未发现 firewalld 服务，不需要禁用"
+    fi
+}
+
+# 配置 iptables
+configure_iptables() {
+    log_info "配置 iptables 规则..."
+
+    # 设置允许所有流量（你可以根据需要修改）
+    sudo iptables -P INPUT ACCEPT
+    sudo iptables -P FORWARD ACCEPT
+    sudo iptables -P OUTPUT ACCEPT
+
+    # 其他 iptables 配置根据需求自定义
+    # 例如，允许 ping（ICMP）
+    sudo iptables -A INPUT -p icmp --icmp-type 8 -j ACCEPT
+
+    # 保存 iptables 规则（CentOS 7 之后的版本没有 iptables-persistent，可能需要手动保存）
+    if command -v service > /dev/null 2>&1; then
+        sudo service iptables save
+    else
+        log_warn "无法自动保存 iptables 规则，请手动保存"
+    fi
 }
 
 # 检查是否已经安装 iptables
@@ -99,10 +117,13 @@ check_iptables_installed() {
     fi
 }
 
+# 检查并禁用 firewalld
+disable_firewalld
+
 # 安装 iptables
 check_iptables_installed || install_iptables
 
-# 启用 iptables 服务
-enable_iptables
+# 配置 iptables
+configure_iptables
 
 log_info "iptables 安装并配置完成！"
