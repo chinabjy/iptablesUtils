@@ -153,7 +153,7 @@ delete_old_rules() {
         done
         
         # POSTROUTING - 匹配multiport规则
-        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "$remote" | grep "multiport dports $remoteport_input" | awk '{print $1}' | sort -r))
+        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "multiport dports $remoteport_input" | awk '{print $1}' | sort -r))
         for i in "${indices[@]}"; do
             echo "删除 POSTROUTING 多端口规则 $i"
             iptables -t nat -D POSTROUTING "$i"
