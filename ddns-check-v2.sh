@@ -178,31 +178,52 @@ else
     echo "如果既没有逗号也没有冒号，代表单端口"    
     dnat_target="$remote:$remoteport_input"
 fi
-
-# PREROUTING规则
+# 检查是否存在相同的 PREROUTING规则
 if [ "$localport_type" = "single" ]; then
     # 单端口或连续范围：使用标准语法
-
-    echo "添加单端口/连续范围转发规则（标准语法）...远程目标：$dnat_target"
-    iptables -t nat -A PREROUTING -p tcp --dport "$localport_input" -j DNAT --to-destination "$dnat_target"
-    iptables -t nat -A PREROUTING -p udp --dport "$localport_input" -j DNAT --to-destination "$dnat_target"
+    echo "检查是否存在单端口/连续范围转发规则..."
+    if ! iptables -t nat -C PREROUTING -p tcp --dport "$localport_input" -j DNAT --to-destination "$dnat_target" &>/dev/null; then
+        # 如果没有找到该规则，则添加
+        echo "添加单端口/连续范围转发规则（标准语法）...远程目标：$dnat_target"
+        iptables -t nat -A PREROUTING -p tcp --dport "$localport_input" -j DNAT --to-destination "$dnat_target"
+        iptables -t nat -A PREROUTING -p udp --dport "$localport_input" -j DNAT --to-destination "$dnat_target"
+    else
+        echo "单端口/连续范围转发规则已存在，跳过添加。"
+    fi
 else
     # 多端口列表：使用multiport语法，保持用户输入的冒号格式
-    echo "添加多端口转发规则（multiport模块）..."
-    iptables -t nat -A PREROUTING -p tcp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote"
-    iptables -t nat -A PREROUTING -p udp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote"
+    echo "检查是否存在多端口转发规则..."
+    if ! iptables -t nat -C PREROUTING -p tcp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote" &>/dev/null; then
+        # 如果没有找到该规则，则添加
+        echo "添加多端口转发规则（multiport模块）..."
+        iptables -t nat -A PREROUTING -p tcp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote"
+        iptables -t nat -A PREROUTING -p udp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote"
+    else
+        echo "多端口转发规则已存在，跳过添加。"
+    fi
 fi
 
-# POSTROUTING规则
+# 检查是否存在相同的 POSTROUTING规则
 if [ "$localport_type" = "single" ]; then
     # 单端口或连续范围：使用标准语法
-   
-    iptables -t nat -A POSTROUTING -p tcp -d "$remote" --dport "$remoteport_input" -j SNAT --to-source "$local"
-    iptables -t nat -A POSTROUTING -p udp -d "$remote" --dport "$remoteport_input" -j SNAT --to-source "$local"
+    echo "检查是否存在单端口/连续范围的POSTROUTING规则..."
+    if ! iptables -t nat -C POSTROUTING -p tcp -d "$remote" --dport "$remoteport_input" -j SNAT --to-source "$local" &>/dev/null; then
+        # 如果没有找到该规则，则添加
+        iptables -t nat -A POSTROUTING -p tcp -d "$remote" --dport "$remoteport_input" -j SNAT --to-source "$local"
+        iptables -t nat -A POSTROUTING -p udp -d "$remote" --dport "$remoteport_input" -j SNAT --to-source "$local"
+    else
+        echo "单端口/连续范围的POSTROUTING规则已存在，跳过添加。"
+    fi
 else
     # 多端口列表：使用multiport语法
-    iptables -t nat -A POSTROUTING -p tcp -d "$remote" -m multiport --dports "$remoteport_input" -j SNAT --to-source "$local"
-    iptables -t nat -A POSTROUTING -p udp -d "$remote" -m multiport --dports "$remoteport_input" -j SNAT --to-source "$local"
+    echo "检查是否存在多端口POSTROUTING规则..."
+    if ! iptables -t nat -C POSTROUTING -p tcp -d "$remote" -m multiport --dports "$remoteport_input" -j SNAT --to-source "$local" &>/dev/null; then
+        # 如果没有找到该规则，则添加
+        iptables -t nat -A POSTROUTING -p tcp -d "$remote" -m multiport --dports "$remoteport_input" -j SNAT --to-source "$local"
+        iptables -t nat -A POSTROUTING -p udp -d "$remote" -m multiport --dports "$remoteport_input" -j SNAT --to-source "$local"
+    else
+        echo "多端口POSTROUTING规则已存在，跳过添加。"
+    fi
 fi
 
 
