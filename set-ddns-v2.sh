@@ -155,7 +155,9 @@ while true; do
 
             # 创建记录字符串，直接使用输入的端口格式
             IPrecordfile="${localport_input}[${targetDDNS}:${remoteport_input}]"
-
+            # 开机强制刷新一次
+            chmod +x /etc/rc.d/rc.local
+            echo "rm -f /root/$IPrecordfile" >> /etc/rc.d/rc.local
             # 写入 rc.local 启动命令（避免重复）
             grep -F "/usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS" $RCLOCAL >/dev/null 2>&1 || \
                 echo "/bin/bash /usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS $IPrecordfile $localip &>> /root/iptables_${localport_input}.log" >> $RCLOCAL
@@ -247,11 +249,31 @@ while true; do
                 done
             fi
 
-            # 删除 /etc/crontab 中匹配的任务
-            sed -i "/$delport_input/d" /etc/crontab
+            # 判断是否为多端口
+            if [[ "$delport_input" == *","* || "$delport_input" == *":"* ]]; then
+                # 多端口删除规则
+                echo "检测到多端口，删除规则..."
+                sed -i "/\(.*[:].*[:].*\|.*[,] .*\).*$delport_input/d" /etc/crontab
+                sed -i "/\(.*[:].*[:].*\|.*[,] .*\).*$delport_input/d" $RCLOCAL
+                echo "已删除多端口相关任务。"
+            else
+                # 单端口删除规则
+                echo "检测到单端口，删除规则..."
+                
+                # 获取远程端口（你可以根据实际需求修改获取方式）
+                remoteport=$(grep -E "ddns-check-v2.sh" /etc/crontab | grep -E " $delport_input " | awk '{print $2}')
+                
+                if [ -z "$remoteport" ]; then
+                    echo "未找到匹配的远程端口。"
+                    exit 1
+                fi
             
-            # 删除 rc.local 中匹配的任务
-            sed -i "\|$delport_input|d" $RCLOCAL
+                # 精确匹配：删除本地端口和远程端口完全匹配的任务
+                sed -i "/$delport_input[[:space:]]*$remoteport/d" /etc/crontab
+                sed -i "/$delport_input[[:space:]]*$remoteport/d" $RCLOCAL
+                
+                echo "已删除本地端口 $delport_input 和远程端口 $remoteport 的转发任务。"
+            fi
             
             echo -e "${green}端口 $delport_input 的转发规则已删除（iptables、crontab、rc.local）${black}"
             ;;
