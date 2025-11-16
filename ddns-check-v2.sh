@@ -158,8 +158,8 @@ if [ "$localport_type" = "single" ]; then
     # 单端口或连续范围：使用标准语法
 
     echo "添加单端口/连续范围转发规则（标准语法）..."
-    iptables -t nat -A PREROUTING -p tcp --dport "$localport_std" -j DNAT --to-destination "$remote:$remoteport_std"
-    iptables -t nat -A PREROUTING -p udp --dport "$localport_std" -j DNAT --to-destination "$remote:$remoteport_std"
+    iptables -t nat -A PREROUTING -p tcp --dport "$localport_input" -j DNAT --to-destination "$remote:$remoteport_std"
+    iptables -t nat -A PREROUTING -p udp --dport "$localport_input" -j DNAT --to-destination "$remote:$remoteport_std"
 else
     # 多端口列表：使用multiport语法，保持用户输入的冒号格式
     echo "添加多端口转发规则（multiport模块）..."
