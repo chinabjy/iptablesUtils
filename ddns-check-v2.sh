@@ -154,22 +154,28 @@ delete_old_rules() {
 # 执行删除旧规则
 delete_old_rules
 
-# 添加新规则[1](@ref)[2](@ref)[6](@ref)
+# 在脚本的规则添加部分进行如下修改：
+
+# 删除旧规则后，添加新规则的部分应该这样写：
 if [ "$localport_type" = "single" ]; then
-    # 单端口规则（保持原有逻辑）
-    echo "添加单端口转发规则..."
+    # 单端口使用标准语法
     iptables -t nat -A PREROUTING -p tcp --dport "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
     iptables -t nat -A PREROUTING -p udp --dport "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
+else
+    # 多端口使用multiport语法
+    iptables -t nat -A PREROUTING -p tcp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
+    iptables -t nat -A PREROUTING -p udp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
+fi
+
+# POSTROUTING规则也需要相应修改
+if [ "$localport_type" = "single" ]; then
     iptables -t nat -A POSTROUTING -p tcp -d "$remote" --dport "$remoteport_input" -j SNAT --to-source "$local"
     iptables -t nat -A POSTROUTING -p udp -d "$remote" --dport "$remoteport_input" -j SNAT --to-source "$local"
 else
-    # 多端口规则（使用multiport模块）[1](@ref)[2](@ref)[4](@ref)
-    echo "添加多端口转发规则（使用multiport模块）..."
-    iptables -t nat -A PREROUTING -p tcp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"[6](@ref)
-    iptables -t nat -A PREROUTING -p udp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
     iptables -t nat -A POSTROUTING -p tcp -d "$remote" -m multiport --dports "$remoteport_input" -j SNAT --to-source "$local"
     iptables -t nat -A POSTROUTING -p udp -d "$remote" -m multiport --dports "$remoteport_input" -j SNAT --to-source "$local"
 fi
+
 
 echo -e "${green}iptables 转发规则更新完成${black}"
 echo "端口类型: $localport_type"
