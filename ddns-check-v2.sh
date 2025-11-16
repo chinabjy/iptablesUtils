@@ -163,8 +163,8 @@ if [ "$localport_type" = "single" ]; then
 else
     # 多端口列表：使用multiport语法，保持用户输入的冒号格式
     echo "添加多端口转发规则（multiport模块）..."
-    iptables -t nat -A PREROUTING -p tcp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
-    iptables -t nat -A PREROUTING -p udp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
+    iptables -t nat -A PREROUTING -p tcp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote"
+    iptables -t nat -A PREROUTING -p udp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote"
 fi
 
 # POSTROUTING规则
