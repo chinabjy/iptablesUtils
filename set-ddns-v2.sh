@@ -169,8 +169,16 @@ while true; do
                         remoteport=$(echo "$line" | awk '{print $7}')
                         targetDDNS=$(echo "$line" | awk '{print $8}' | sed 's/\[.*//')
             
+                        # 将目标DDNS解析成IP
+                        targetIP=$(dig +short "$targetDDNS" | head -n 1)
+            
+                        if [ -z "$targetIP" ]; then
+                            echo -e "${red}无法解析域名 $targetDDNS${black}"
+                            continue
+                        fi
+                        
                         # 查找并删除与本地端口匹配的 POSTROUTING 规则
-                        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep -E "dpt:$remoteport" | grep -E "$targetDDNS" | awk '{print $1}' | sort -r))
+                        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep -E "dpt:$remoteport" | grep -E "$targetIP" | awk '{print $1}' | sort -r))
             
                         # 逐条删除匹配的 POSTROUTING 规则
                         for i in "${indices[@]}"; do
@@ -180,6 +188,7 @@ while true; do
                     fi
                 fi
             done < /etc/crontab
+
             
             # 删除 /etc/crontab 中本地端口号匹配的任务
             sed -i "/\b$delport\b/d" /etc/crontab
