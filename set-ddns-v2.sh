@@ -260,13 +260,22 @@ while true; do
                 # 单端口删除规则
                 echo "检测到单端口，删除规则..."
                 
-                # 获取远程端口（你可以根据实际需求修改获取方式）
-                remoteport=$(grep -E "ddns-check-v2.sh" /etc/crontab | grep -E " $delport_input " | awk '{print $2}')
-                echo "本地端口$delport_input 远程端口$remoteport"
-                if [ -z "$remoteport" ]; then
-                    echo "未找到匹配的远程端口。"
-                    exit 1
-                fi
+                # 查找 PREROUTING 链中的规则，匹配本地端口，获取远程IP和端口
+                    prerouting_rule=$(iptables -L PREROUTING -n -t nat --line-number | grep "dpt:$delport_input")
+                
+                    # 如果没有匹配的规则，退出
+                    if [ -z "$prerouting_rule" ]; then
+                        echo "没有找到匹配的转发规则，退出删除操作。"
+                        exit 1
+                    fi
+                
+                    # 从规则中提取远程 IP 和远程端口
+                    target_ip=$(echo "$prerouting_rule" | awk '{print $5}')
+                    target_port=$(echo "$prerouting_rule" | awk '{print $7}' | cut -d ':' -f2)
+                
+                    # 输出远程 IP 和远程端口
+                    echo "找到远程目标 IP：$target_ip，远程端口：$target_port"
+
             
                 # 精确匹配：删除本地端口和远程端口完全匹配的任务
                 sed -i "/$delport_input[[:space:]]*$remoteport/d" /etc/crontab
