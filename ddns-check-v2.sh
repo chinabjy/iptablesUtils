@@ -168,12 +168,12 @@ delete_old_rules
 # 如果包含逗号
 if [[ "$localport_input" == *","* ]]; then
 
-    dnat_target="$remote
+    dnat_target="$remote"
     
 # 如果包含冒号，但没有逗号
 elif [[ "$localport_input" == *":"* && "$input" != *","* ]]; then
 
-    dnat_target="$remote
+    dnat_target="$remote"
 else
     # 如果既没有逗号也没有冒号，代表单端口    
     dnat_target="$remote:$remoteport_input"
