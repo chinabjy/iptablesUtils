@@ -36,7 +36,7 @@ echo "本地端口: $localport_input, 远程端口: $remoteport_input, 目标 DD
 check_port_type() {
     local port_str="$1"
     # 如果是逗号分隔或多个端口（包含逗号或冒号范围）
-    if echo "$port_str" | grep -qE '[,:]'; then
+    if echo "$port_str" | grep -qE '[,]'; then
         echo "multiport"
     else
         echo "single"
