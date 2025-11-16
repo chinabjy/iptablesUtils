@@ -147,27 +147,48 @@ while true; do
                 continue
             fi
 
-            # 删除 PREROUTING 规则（仅根据本地端口号）
+            
+            # 删除 PREROUTING 规则（不变）
             indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "dpt:$delport" | awk '{print $1}' | sort -r))
             for i in "${indices[@]}"; do
                 echo "删除 PREROUTING 规则 $i"
                 iptables -t nat -D PREROUTING "$i"
             done
-
-            # 删除 POSTROUTING 规则（仅根据本地端口号）
-            indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "dpt:$delport" | awk '{print $1}' | sort -r))
-            for i in "${indices[@]}"; do
-                echo "删除 POSTROUTING 规则 $i"
-                iptables -t nat -D POSTROUTING "$i"
-            done
-
-            # 删除 /etc/crontab 中对应规则（仅匹配本地端口号）
+            
+            # 删除 POSTROUTING 规则（按用户提供的本地端口号精确匹配）
+            # 读取 /etc/crontab 中的任务
+            while read -r line; do
+                # 检查该行是否包含 ddns-check-v2.sh 任务
+                if echo "$line" | grep -q "ddns-check-v2.sh"; then
+                    # 提取本地端口号、本地IP、远程端口号、目标DDNS
+                    localport=$(echo "$line" | awk '{print $6}')
+                    
+                    # 只处理匹配到的本地端口号
+                    if [ "$localport" == "$delport" ]; then
+                        # 提取远程端口号和目标 DDNS 地址
+                        remoteport=$(echo "$line" | awk '{print $7}')
+                        targetDDNS=$(echo "$line" | awk '{print $8}' | sed 's/\[.*//')
+            
+                        # 查找并删除与本地端口匹配的 POSTROUTING 规则
+                        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep -E "dpt:$remoteport" | grep -E "$targetDDNS" | awk '{print $1}' | sort -r))
+            
+                        # 逐条删除匹配的 POSTROUTING 规则
+                        for i in "${indices[@]}"; do
+                            echo "删除 POSTROUTING 规则 $i (本地端口: $localport, 远程端口: $remoteport, 目标: $targetDDNS)"
+                            iptables -t nat -D POSTROUTING "$i"
+                        done
+                    fi
+                fi
+            done < /etc/crontab
+            
+            # 删除 /etc/crontab 中本地端口号匹配的任务
             sed -i "/\b$delport\b/d" /etc/crontab
-
-            # 删除 rc.local 中对应规则（仅匹配本地端口号）
+            
+            # 删除 rc.local 中本地端口号匹配的任务（不变）
             sed -i "\|$delport|d" $RCLOCAL
-
+            
             echo -e "${green}端口 $delport 的转发规则已删除（iptables、crontab、rc.local）${black}"
+
             ;;
 
         4)
