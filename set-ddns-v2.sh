@@ -198,11 +198,9 @@ while true; do
                 continue
             fi
             
-            # 假设 delport_input 是你要查找的本地端口
-            delport_input="900"  # 举例，可以是 900, 80, 1001:1006, 1,2 等
-            
             # 查找 PREROUTING 链中匹配指定本地端口的第一条规则
-            prerouting_rule=$(iptables -t nat -L PREROUTING -n --line-numbers | grep -E "dpts?:$delport_input|multiport.*dports.*$delport_input|dpt:$delport_input" | head -n 1)
+            # 改进匹配模式，适应多端口规则格式
+            prerouting_rule=$(iptables -t nat -L PREROUTING -n --line-numbers | grep -E "dpts?:$delport_input(\ |$)|multiport.*dports.*$delport_input|dpt:$delport_input(\ |$)" | head -n 1)
             
             # 如果没有匹配的规则，退出
             if [ -z "$prerouting_rule" ]; then
@@ -211,13 +209,33 @@ while true; do
             fi
             
             # 从规则中提取远程 IP 和远程端口
-            # 关键修正：目标IP和端口信息通常在包含 'to:' 的字段里
-            target_info=$(echo "$prerouting_rule" | awk '{for(i=1; i<=NF; i++) if ($i ~ /^to:/) print $i}')
-            target_ip=$(echo "$target_info" | cut -d ':' -f2)
-            target_port=$(echo "$target_info" | cut -d ':' -f3)
+            # 关键修正：适应多端口规则的目标信息提取
+            target_info=$(echo "$prerouting_rule" | awk '{
+                for(i=1; i<=NF; i++) {
+                    if ($i ~ /^to:/) {
+                        print $i
+                        break
+                    }
+                    # 处理multiport规则中to-destination格式
+                    if ($(i) ~ /to-destination/ && $(i+1) ~ /:/) {
+                        print $(i+1)
+                        break
+                    }
+                }
+            }')
+            
+            # 提取IP和端口（适应IP:PORT格式）
+            target_ip=$(echo "$target_info" | sed 's/.*://' | cut -d ':' -f1)
+            target_port=$(echo "$target_info" | sed 's/.*://' | cut -d ':' -f2)
+            
+            # 如果端口为空，尝试从规则的其他部分提取
+            if [ -z "$target_port" ]; then
+                target_port=$(echo "$prerouting_rule" | grep -oE "to:[^ ]+" | sed 's/.*://' | cut -d ':' -f2)
+            fi
             
             # 输出远程 IP 和远程端口
             echo "找到远程目标 IP：$target_ip，远程端口：$target_port"
+            
 
 
             # 检查端口类型：单端口还是多端口
