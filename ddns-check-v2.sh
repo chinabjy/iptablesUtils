@@ -117,19 +117,15 @@ delete_old_rules() {
         # 单端口或连续范围删除逻辑（标准语法）
         echo "删除标准语法规则..."
         
-        # 转换端口格式：将可能输入的冒号范围转换为标准语法使用的连字符
-        local localport_std=$(echo "$localport_input" | tr ':' '-')
-        local remoteport_std=$(echo "$remoteport_input" | tr ':' '-')
-        
         # PREROUTING - 匹配标准语法的端口规则（dpt 或 dpts）
-        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep -E "dpts?:$localport_std" | grep "to:$remote:$remoteport_std" | awk '{print $1}' | sort -r))
+        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep -E "dpts?:$localport_input" | grep "to:$remote:$remoteport_input" | awk '{print $1}' | sort -r))
         for i in "${indices[@]}"; do
             echo "删除 PREROUTING 规则 $i (标准语法)"
             iptables -t nat -D PREROUTING "$i"
         done
 
         # POSTROUTING - 精确匹配目标IP和端口
-        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep -E "$remote" | grep -E "dpts?:$remoteport_std" | awk '{print $1}' | sort -r))
+        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep -E "$remote" | grep -E "dpts?:$remoteport_input" | awk '{print $1}' | sort -r))
         for i in "${indices[@]}"; do
             echo "删除 POSTROUTING 规则 $i (标准语法)"
             iptables -t nat -D POSTROUTING "$i"
@@ -160,10 +156,7 @@ delete_old_rules
 # PREROUTING规则
 if [ "$localport_type" = "single" ]; then
     # 单端口或连续范围：使用标准语法
-    # 将用户输入的端口范围冒号(:)转换为标准语法认可的连字符(-)
-    localport_std=$(echo "$localport_input" | tr ':' '-')
-    remoteport_std=$(echo "$remoteport_input" | tr ':' '-')
-    
+
     echo "添加单端口/连续范围转发规则（标准语法）..."
     iptables -t nat -A PREROUTING -p tcp --dport "$localport_std" -j DNAT --to-destination "$remote:$remoteport_std"
     iptables -t nat -A PREROUTING -p udp --dport "$localport_std" -j DNAT --to-destination "$remote:$remoteport_std"
@@ -177,9 +170,7 @@ fi
 # POSTROUTING规则
 if [ "$localport_type" = "single" ]; then
     # 单端口或连续范围：使用标准语法
-    # 注意POSTROUTING规则中匹配的是远程端口（数据包离开本机去往目标机的端口）
-    remoteport_std=$(echo "$remoteport_input" | tr ':' '-')
-    
+   
     iptables -t nat -A POSTROUTING -p tcp -d "$remote" --dport "$remoteport_std" -j SNAT --to-source "$local"
     iptables -t nat -A POSTROUTING -p udp -d "$remote" --dport "$remoteport_std" -j SNAT --to-source "$local"
 else
