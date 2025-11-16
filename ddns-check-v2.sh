@@ -183,7 +183,7 @@ fi
 if [ "$localport_type" = "single" ]; then
     # 单端口或连续范围：使用标准语法
 
-    echo "添加单端口/连续范围转发规则（标准语法）..."
+    echo "添加单端口/连续范围转发规则（标准语法）...远程目标：$dnat_target"
     iptables -t nat -A PREROUTING -p tcp --dport "$localport_input" -j DNAT --to-destination "$dnat_target"
     iptables -t nat -A PREROUTING -p udp --dport "$localport_input" -j DNAT --to-destination "$dnat_target"
 else
