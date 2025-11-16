@@ -144,86 +144,64 @@ while true; do
             ;;
 
         3)
-            read -p "请输入需要删除的本地端口号: " delport
-            if ! [[ "$delport" =~ ^[0-9]+$ ]]; then
-                echo -e "${red}端口请输入数字！！${black}"
+            read -p "请输入需要删除的本地端口号 (支持单端口/多端口): " delport_input
+            if ! echo "$delport_input" | grep -Eq '^[0-9]+([,-][0-9]+)*$'; then
+                echo -e "${red}端口格式错误！支持单端口、范围(如8000-8010)或逗号分隔列表${black}"
                 continue
             fi
 
-            
-            # 删除 PREROUTING 规则（不变）
-            indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "dpt:$delport" | awk '{print $1}' | sort -r))
-            for i in "${indices[@]}"; do
-                echo "删除 PREROUTING 规则 $i"
-                iptables -t nat -D PREROUTING "$i"
-            done
-            
-            
-            # 删除 POSTROUTING 规则（按用户提供的本地端口号精确匹配）
-            # 读取 /etc/crontab 中的任务
+            # 检查端口类型：单端口还是多端口
+            if echo "$delport_input" | grep -qE '[,-]'; then
+                port_type="multiport"
+            else
+                port_type="single"
+            fi
 
-            while read -r line; do
-                # 检查该行是否包含 ddns-check-v2.sh 任务
-                # echo "检查的行: $line"  # 添加这一行用于调试
-                if echo "$line" | grep -q "ddns-check-v2.sh"; then
-                    # 提取本地端口号、本地IP、远程端口号、目标DDNS
-                    localport=$(echo "$line" | awk '{print $8}')
-                    
-                    # 只处理匹配到的本地端口号
-                    if [ "$localport" == "$delport" ]; then
-                        echo -e "${green}匹配到的定时任务：${black}"
-                        echo "$line"
-            
-                        # 提取远程端口号和目标 DDNS 地址
-                        remoteport=$(echo "$line" | awk '{print $9}')
-                        targetDDNS=$(echo "$line" | awk '{print $10}' | sed 's/\[.*//')
-            
-                        echo -e "${green}提取到的远程端口号：$remoteport${black}"
-                        echo -e "${green}提取到的目标 DDNS：$targetDDNS${black}"
-            
-                        # 将目标DDNS解析成IP
-                        targetIP=$(dig +short "$targetDDNS" | head -n 1)
-            
-                        if [ -z "$targetIP" ]; then
-                            echo -e "${red}无法解析域名 $targetDDNS${black}"
-                            continue
-                        fi
-                        echo -e "${green}目标DDNS解析后的IP：$targetIP${black}"
-            
-                        # 查找并删除与本地端口匹配的 POSTROUTING 规则
-                        echo -e "${green}开始查找匹配的 POSTROUTING 规则...${black}"
-                        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep -E "dpt:$remoteport" | grep -E "$targetIP" | awk '{print $1}' | sort -r))
-            
-                        # 显示匹配到的规则
-                        if [ ${#indices[@]} -eq 0 ]; then
-                            echo -e "${red}未找到匹配的 POSTROUTING 规则${black}"
-                            continue
-                        else
-                            echo -e "${green}匹配到的规则行号：${black}"
-                            echo "${indices[@]}"
-                        fi
-            
-                        # 逐条删除匹配的 POSTROUTING 规则
-                        for i in "${indices[@]}"; do
-                            echo -e "${green}删除 POSTROUTING 规则 $i (本地端口: $localport, 远程端口: $remoteport, 目标: $targetDDNS)${black}"
-                            iptables -t nat -D POSTROUTING "$i"
-                        done
-                    fi
-                fi
-            done < /etc/crontab
+            echo "检测到端口类型: $port_type"
 
+            # 删除 PREROUTING 规则（根据端口类型采用不同策略）
+            if [ "$port_type" = "multiport" ]; then
+                # 多端口：使用 multiport 匹配删除
+                indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "multiport dports $delport_input" | awk '{print $1}' | sort -r))
+                for i in "${indices[@]}"; do
+                    echo "删除 PREROUTING 多端口规则 $i (端口: $delport_input)"
+                    iptables -t nat -D PREROUTING "$i"
+                done
+            else
+                # 单端口：使用传统方式删除
+                indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "dpt:$delport_input" | awk '{print $1}' | sort -r))
+                for i in "${indices[@]}"; do
+                    echo "删除 PREROUTING 规则 $i (端口: $delport_input)"
+                    iptables -t nat -D PREROUTING "$i"
+                done
+            fi
 
+            # 删除 POSTROUTING 规则（同样根据端口类型处理）
+            if [ "$port_type" = "multiport" ]; then
+                # 多端口：使用 multiport 匹配删除[1](@ref)[5](@ref)
+                indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "multiport dports $delport_input" | awk '{print $1}' | sort -r))
+                for i in "${indices[@]}"; do
+                    echo "删除 POSTROUTING 多端口规则 $i (端口: $delport_input)"
+                    iptables -t nat -D POSTROUTING "$i"
+                done
+            else
+                # 单端口：使用传统方式删除
+                indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "dpt:$delport_input" | awk '{print $1}' | sort -r))
+                for i in "${indices[@]}"; do
+                    echo "删除 POSTROUTING 规则 $i (端口: $delport_input)"
+                    iptables -t nat -D POSTROUTING "$i"
+                done
+            fi
 
+            # 删除 /etc/crontab 中匹配的任务
+            sed -i "/$delport_input/d" /etc/crontab
             
-            # 删除 /etc/crontab 中本地端口号匹配的任务
-            sed -i "/\b$delport\b/d" /etc/crontab
+            # 删除 rc.local 中匹配的任务
+            sed -i "\|$delport_input|d" $RCLOCAL
             
-            # 删除 rc.local 中本地端口号匹配的任务（不变）
-            sed -i "\|$delport|d" $RCLOCAL
-            
-            echo -e "${green}端口 $delport 的转发规则已删除（iptables、crontab、rc.local）${black}"
-
+            echo -e "${green}端口 $delport_input 的转发规则已删除（iptables、crontab、rc.local）${black}"
             ;;
+
 
         4)
             exit 0
