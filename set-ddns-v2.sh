@@ -108,21 +108,22 @@ while true; do
                 continue
             fi
 
-            # 创建记录字符串，使用输入的原生格式
-            IPrecordfile="multiport_${localport_input}[${targetDDNS}:${remoteport_input}]"
+            # 创建记录字符串，直接使用输入的端口格式
+            IPrecordfile="${localport_input}[${targetDDNS}:${remoteport_input}]"
 
             # 写入 rc.local 启动命令（避免重复）
             grep -F "/usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS" $RCLOCAL >/dev/null 2>&1 || \
-                echo "/bin/bash /usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS $IPrecordfile $localip &>> /root/iptables_multiport_${localport_input}.log" >> $RCLOCAL
+                echo "/bin/bash /usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS $IPrecordfile $localip &>> /root/iptables_${localport_input}.log" >> $RCLOCAL
 
             # 添加 crontab 任务到系统级 crontab（避免重复）
-            cronjob="* * * * * root /usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS $IPrecordfile $localip &>> /root/iptables_multiport_${localport_input}.log"
+            cronjob="* * * * * root /usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS $IPrecordfile $localip &>> /root/iptables_${localport_input}.log"
             if ! grep -F "$cronjob" /etc/crontab >/dev/null 2>&1; then
                 echo "$cronjob" >> /etc/crontab
                 echo -e "${green}成功将定时任务添加到 /etc/crontab。${black}"
             else
                 echo -e "${green}定时任务已存在，无需重复添加。${black}"
             fi
+
 
             # 强制添加规则，绕过 IP 检查
             bash /usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS $IPrecordfile $localip force_add
