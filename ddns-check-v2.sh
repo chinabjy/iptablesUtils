@@ -129,7 +129,7 @@ delete_old_rules() {
         echo "删除标准语法规则..."
         
         # PREROUTING - 匹配标准语法的端口规则（dpt 或 dpts）
-        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep -E "dpts?:$localport_input" | grep "to:$remote:$remoteport_input" | awk '{print $1}' | sort -r))
+        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep -E "dpts?:$localport_input" | awk '{print $1}' | sort -r))
         for i in "${indices[@]}"; do
             echo "删除 PREROUTING 规则 $i (标准语法)"
             iptables -t nat -D PREROUTING "$i"
@@ -146,7 +146,7 @@ delete_old_rules() {
         echo "删除multiport规则..."
         
         # PREROUTING - 使用multiport匹配删除
-        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "multiport dports $localport_input" | grep "to:$remote:$remoteport_input" | awk '{print $1}' | sort -r))
+        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "multiport dports $localport_input" | awk '{print $1}' | sort -r))
         for i in "${indices[@]}"; do
             echo "删除 PREROUTING 多端口规则 $i"
             iptables -t nat -D PREROUTING "$i"
