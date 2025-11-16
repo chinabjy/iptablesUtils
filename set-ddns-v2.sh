@@ -108,6 +108,12 @@ while true; do
                 continue
             fi
             
+            # 当$localport_input 或 $remoteport_input 含有冒号或逗号时，它们必须相同
+            if [[ "$localport_input" =~ [,:] && "$localport_input" != "$remoteport_input" ]]; then
+                echo -e "${red}多端口转发时：本地端口和远程端口必须相同，否则无法进行转发规则设置！${black}"
+                continue
+            fi
+            
             # 检测到逗号时，进行端口数量检查（多端口情况）
             if echo "$localport_input" | grep -q ',' || echo "$remoteport_input" | grep -q ','; then
                 # 计算总端口数量的函数
