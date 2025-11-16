@@ -226,15 +226,15 @@ while true; do
             
             # 精确提取IP和端口
             target_ip=$(echo "$target_info" | awk -F ':' '{print $1}')
-            target_port=$(echo "$target_info" | awk -F ':' '{print $2}')
+            remoteport=$(echo "$target_info" | awk -F ':' '{print $2}')
             
             # 处理没有端口号的情况（只有IP）
-            if [ "$target_port" = "$target_ip" ]; then
-                target_port=""
+            if [ "$remoteport" = "$target_ip" ]; then
+                remoteport=""
             fi
             
             # 输出结果
-            echo "找到远程目标 IP：$target_ip，远程端口：${target_port:-与本地端口相同}"
+            echo "找到远程目标 IP：$target_ip，远程端口：${remoteport:-与本地端口相同}"
             
                         
 
@@ -283,7 +283,7 @@ while true; do
                 done
             else
                 # 单端口：使用传统方式删除
-                indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "$dpt_type:$delport_input" | awk '{print $1}' | sort -r))
+                indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "$dpt_type:$remoteport" | awk '{print $1}' | sort -r))
                 for i in "${indices[@]}"; do
                     echo "删除 POSTROUTING 规则 $i (端口: $delport_input)"
                     iptables -t nat -D POSTROUTING "$i"
