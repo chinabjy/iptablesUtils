@@ -155,6 +155,7 @@ while true; do
                 iptables -t nat -D PREROUTING "$i"
             done
             
+
             # 删除 POSTROUTING 规则（按用户提供的本地端口号精确匹配）
             # 读取 /etc/crontab 中的任务
             while read -r line; do
@@ -178,7 +179,13 @@ while true; do
                         fi
                         
                         # 查找并删除与本地端口匹配的 POSTROUTING 规则
+                        # 使用更加精确的匹配目标IP和远程端口
                         indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep -E "dpt:$remoteport" | grep -E "$targetIP" | awk '{print $1}' | sort -r))
+                        
+                        if [ ${#indices[@]} -eq 0 ]; then
+                            echo -e "${red}未找到匹配的 POSTROUTING 规则${black}"
+                            continue
+                        fi
             
                         # 逐条删除匹配的 POSTROUTING 规则
                         for i in "${indices[@]}"; do
@@ -188,6 +195,7 @@ while true; do
                     fi
                 fi
             done < /etc/crontab
+
 
             
             # 删除 /etc/crontab 中本地端口号匹配的任务
