@@ -92,7 +92,7 @@ while true; do
 
     case $choice in
          1)
-            read -p "本地端口号 (支持单端口/范围/逗号分隔，如: 8080,8000-8010,9000): " localport_input
+            read -p "本地端口号 (支持单端口/范围/逗号分隔，如: 8080,8000:8010,9000): " localport_input
             read -p "远程端口号 (格式需与本地端口对应): " remoteport_input
             read -p "目标 DDNS: " targetDDNS
             read -p "绑定的本地IP地址: " localip
@@ -102,11 +102,12 @@ while true; do
                 localip=$local
             fi
 
-            # 验证端口格式（支持数字、逗号分隔和范围）
-            if ! echo "$localport_input" | grep -Eq '^[0-9]+([,-][0-9]+)*$' || ! echo "$remoteport_input" | grep -Eq '^[0-9]+([,-][0-9]+)*$'; then
-                echo -e "${red}端口格式错误！支持单端口、范围(如8000-8010)或逗号分隔列表${black}"
+            # 验证端口格式（支持数字、逗号分隔和范围，范围使用冒号）
+            if ! echo "$localport_input" | grep -Eq '^[0-9]+([,:][0-9]+)*$' || ! echo "$remoteport_input" | grep -Eq '^[0-9]+([,:][0-9]+)*$'; then
+                echo -e "${red}端口格式错误！支持单端口、范围(如8000:8010)或逗号分隔列表${black}"
                 continue
             fi
+
 
             # 创建记录字符串，直接使用输入的端口格式
             IPrecordfile="${localport_input}[${targetDDNS}:${remoteport_input}]"
