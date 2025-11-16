@@ -102,11 +102,49 @@ while true; do
                 localip=$local
             fi
 
-            # 验证端口格式（支持数字、逗号分隔和范围，范围使用冒号）
+            # 验证端口格式（支持数字、冒号范围和逗号分隔列表）
             if ! echo "$localport_input" | grep -Eq '^[0-9]+([,:][0-9]+)*$' || ! echo "$remoteport_input" | grep -Eq '^[0-9]+([,:][0-9]+)*$'; then
                 echo -e "${red}端口格式错误！支持单端口、范围(如8000:8010)或逗号分隔列表${black}"
                 continue
             fi
+            
+            # 检测到逗号时，进行端口数量检查（多端口情况）
+            if echo "$localport_input" | grep -q ',' || echo "$remoteport_input" | grep -q ','; then
+                # 计算总端口数量的函数
+                count_ports() {
+                    local port_str="$1"
+                    local count=0
+                    
+                    # 按逗号分割
+                    IFS=',' read -ra parts <<< "$port_str"
+                    for part in "${parts[@]}"; do
+                        # 检查是否是端口范围（冒号分隔）
+                        if [[ "$part" =~ ^([0-9]+):([0-9]+)$ ]]; then
+                            local start=${BASH_REMATCH[1]}
+                            local end=${BASH_REMATCH[2]}
+                            # 端口范围算作多个端口（实际数量）
+                            count=$((count + end - start + 1))
+                        else
+                            # 单端口算作1个端口
+                            count=$((count + 1))
+                        fi
+                    done
+                    echo $count
+                }
+                
+                localport_count=$(count_ports "$localport_input")
+                remoteport_count=$(count_ports "$remoteport_input")
+                
+                # 检查端口数量是否超过15个限制
+                if [ $localport_count -gt 15 ] || [ $remoteport_count -gt 15 ]; then
+                    echo -e "${red}多端口数量超过15个限制！本地端口数: $localport_count, 远程端口数: $remoteport_count${black}"
+                    echo -e "${red}请将端口列表拆分或使用端口范围减少端口数量${black}"
+                    continue
+                fi
+                
+                echo -e "${green}多端口检测通过：本地端口数 $localport_count, 远程端口数 $remoteport_count${black}"
+            fi
+
 
 
             # 创建记录字符串，直接使用输入的端口格式
@@ -153,7 +191,7 @@ while true; do
             fi
 
             # 检查端口类型：单端口还是多端口
-            if echo "$delport_input" | grep -qE '[,:]'; then
+            if echo "$delport_input" | grep -qE '[,]'; then
                 port_type="multiport"
             else
                 port_type="single"
