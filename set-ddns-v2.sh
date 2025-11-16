@@ -164,7 +164,7 @@ while true; do
                 echo "检查的行: $line"  # 添加这一行用于调试
                 if echo "$line" | grep -q "ddns-check-v2.sh"; then
                     # 提取本地端口号、本地IP、远程端口号、目标DDNS
-                    localport=$(echo "$line" | awk '{print $6}')
+                    localport=$(echo "$line" | awk '{print $8}')
                     
                     # 只处理匹配到的本地端口号
                     if [ "$localport" == "$delport" ]; then
@@ -172,8 +172,8 @@ while true; do
                         echo "$line"
             
                         # 提取远程端口号和目标 DDNS 地址
-                        remoteport=$(echo "$line" | awk '{print $7}')
-                        targetDDNS=$(echo "$line" | awk '{print $8}' | sed 's/\[.*//')
+                        remoteport=$(echo "$line" | awk '{print $9}')
+                        targetDDNS=$(echo "$line" | awk '{print $10}' | sed 's/\[.*//')
             
                         echo -e "${green}提取到的远程端口号：$remoteport${black}"
                         echo -e "${green}提取到的目标 DDNS：$targetDDNS${black}"
