@@ -275,8 +275,11 @@ while true; do
             if [[ "$delport_input" == *","* || "$delport_input" == *":"* ]]; then
                 # 多端口删除规则
                 echo "检测到多端口，删除规则..."
-                sed -i "/\(.*[:].*[:].*\|.*[,] .*\).*$delport_input/d" /etc/crontab
-                sed -i "/\(.*[:].*[:].*\|.*[,] .*\).*$delport_input/d" $RCLOCAL
+                sed -i "/$delport_input/d" /etc/crontab
+                sed -i "/$delport_input/d"  $RCLOCAL
+
+                #sed -i "/\(.*[:].*[:].*\|.*[,] .*\).*$delport_input/d" /etc/crontab
+                #sed -i "/\(.*[:].*[:].*\|.*[,] .*\).*$delport_input/d" $RCLOCAL
                 echo "已删除多端口相关任务。"
             else
                 # 单端口删除规则
