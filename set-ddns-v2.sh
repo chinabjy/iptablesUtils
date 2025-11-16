@@ -145,14 +145,15 @@ while true; do
             ;;
 
         3)
-            read -p "请输入需要删除的本地端口号 (支持单端口/多端口): " delport_input
-            if ! echo "$delport_input" | grep -Eq '^[0-9]+([,-][0-9]+)*$'; then
-                echo -e "${red}端口格式错误！支持单端口、范围(如8000-8010)或逗号分隔列表${black}"
+        
+            read -p "请输入需要删除的本地端口号 (支持单端口/多端口，如 8080 或 8080,8443 或 8000:8010): " delport_input
+            if ! echo "$delport_input" | grep -Eq '^[0-9]+([,:][0-9]+)*$'; then
+                echo -e "${red}端口格式错误！支持单端口、范围(如8000:8010)或逗号分隔列表(如8080,8443)${black}"
                 continue
             fi
 
             # 检查端口类型：单端口还是多端口
-            if echo "$delport_input" | grep -qE '[,-]'; then
+            if echo "$delport_input" | grep -qE '[,:]'; then
                 port_type="multiport"
             else
                 port_type="single"
