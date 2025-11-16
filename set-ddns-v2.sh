@@ -155,7 +155,7 @@ while true; do
                 iptables -t nat -D PREROUTING "$i"
             done
             
-
+            
             # 删除 POSTROUTING 规则（按用户提供的本地端口号精确匹配）
             # 读取 /etc/crontab 中的任务
             while read -r line; do
@@ -166,9 +166,15 @@ while true; do
                     
                     # 只处理匹配到的本地端口号
                     if [ "$localport" == "$delport" ]; then
+                        echo -e "${green}匹配到的定时任务：${black}"
+                        echo "$line"
+            
                         # 提取远程端口号和目标 DDNS 地址
                         remoteport=$(echo "$line" | awk '{print $7}')
                         targetDDNS=$(echo "$line" | awk '{print $8}' | sed 's/\[.*//')
+            
+                        echo -e "${green}提取到的远程端口号：$remoteport${black}"
+                        echo -e "${green}提取到的目标 DDNS：$targetDDNS${black}"
             
                         # 将目标DDNS解析成IP
                         targetIP=$(dig +short "$targetDDNS" | head -n 1)
@@ -177,24 +183,30 @@ while true; do
                             echo -e "${red}无法解析域名 $targetDDNS${black}"
                             continue
                         fi
-                        
+                        echo -e "${green}目标DDNS解析后的IP：$targetIP${black}"
+            
                         # 查找并删除与本地端口匹配的 POSTROUTING 规则
-                        # 使用更加精确的匹配目标IP和远程端口
+                        echo -e "${green}开始查找匹配的 POSTROUTING 规则...${black}"
                         indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep -E "dpt:$remoteport" | grep -E "$targetIP" | awk '{print $1}' | sort -r))
-                        
+            
+                        # 显示匹配到的规则
                         if [ ${#indices[@]} -eq 0 ]; then
                             echo -e "${red}未找到匹配的 POSTROUTING 规则${black}"
                             continue
+                        else
+                            echo -e "${green}匹配到的规则行号：${black}"
+                            echo "${indices[@]}"
                         fi
             
                         # 逐条删除匹配的 POSTROUTING 规则
                         for i in "${indices[@]}"; do
-                            echo "删除 POSTROUTING 规则 $i (本地端口: $localport, 远程端口: $remoteport, 目标: $targetDDNS)"
+                            echo -e "${green}删除 POSTROUTING 规则 $i (本地端口: $localport, 远程端口: $remoteport, 目标: $targetDDNS)${black}"
                             iptables -t nat -D POSTROUTING "$i"
                         done
                     fi
                 fi
             done < /etc/crontab
+
 
 
             
