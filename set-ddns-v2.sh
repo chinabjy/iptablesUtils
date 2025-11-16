@@ -92,8 +92,8 @@ while true; do
 
     case $choice in
         1)
-            read -p "本地端口号: " localport
-            read -p "远程端口号: " remoteport
+            read -p "本地端口号 (支持单端口/范围/逗号分隔，如: 8080,8000-8010,9000): " localport_input
+            read -p "远程端口号 (格式需与本地端口对应): " remoteport_input
             read -p "目标 DDNS: " targetDDNS
             read -p "绑定的本地IP地址: " localip
 
@@ -102,20 +102,21 @@ while true; do
                 localip=$local
             fi
 
-            # 验证端口
-            if ! [[ "$localport" =~ ^[0-9]+$ ]] || ! [[ "$remoteport" =~ ^[0-9]+$ ]]; then
-                echo -e "${red}端口请输入数字！！${black}"
+            # 验证端口格式（支持数字、逗号分隔和范围）
+            if ! echo "$localport_input" | grep -Eq '^[0-9]+([,-][0-9]+)*$' || ! echo "$remoteport_input" | grep -Eq '^[0-9]+([,-][0-9]+)*$'; then
+                echo -e "${red}端口格式错误！支持单端口、范围(如8000-8010)或逗号分隔列表${black}"
                 continue
             fi
 
-            IPrecordfile=${localport}[${targetDDNS}:${remoteport}] # 记录字符串
+            # 创建记录字符串，使用输入的原生格式
+            IPrecordfile="multiport_${localport_input}[${targetDDNS}:${remoteport_input}]"
 
             # 写入 rc.local 启动命令（避免重复）
-            grep -F "/usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS" $RCLOCAL >/dev/null 2>&1 || \
-                echo "/bin/bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log" >> $RCLOCAL
+            grep -F "/usr/local/ddns-check-v2.sh \"$localport_input\" \"$remoteport_input\" $targetDDNS" $RCLOCAL >/dev/null 2>&1 || \
+                echo "/bin/bash /usr/local/ddns-check-v2.sh \"$localport_input\" \"$remoteport_input\" $targetDDNS $IPrecordfile $localip &>> /root/iptables_multiport_${localport_input}.log" >> $RCLOCAL
 
             # 添加 crontab 任务到系统级 crontab（避免重复）
-            cronjob="* * * * * root /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip &>> /root/iptables${localport}.log"
+            cronjob="* * * * * root /usr/local/ddns-check-v2.sh \"$localport_input\" \"$remoteport_input\" $targetDDNS $IPrecordfile $localip &>> /root/iptables_multiport_${localport_input}.log"
             if ! grep -F "$cronjob" /etc/crontab >/dev/null 2>&1; then
                 echo "$cronjob" >> /etc/crontab
                 echo -e "${green}成功将定时任务添加到 /etc/crontab。${black}"
@@ -124,10 +125,11 @@ while true; do
             fi
 
             # 强制添加规则，绕过 IP 检查
-            bash /usr/local/ddns-check-v2.sh $localport $remoteport $targetDDNS $IPrecordfile $localip force_add
+            bash /usr/local/ddns-check-v2.sh "$localport_input" "$remoteport_input" $targetDDNS $IPrecordfile $localip force_add
 
-            echo -e "${green}规则已创建，每分钟会自动检查 DDNS 并更新 iptables${black}"
+            echo -e "${green}多端口转发规则已创建，每分钟会自动检查 DDNS 并更新 iptables${black}"
             ;;
+
 
         2)
             echo "PREROUTING 转发规则:"
