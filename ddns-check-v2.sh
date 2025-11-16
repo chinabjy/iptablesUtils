@@ -109,48 +109,50 @@ echo "本机 IP: $local"
 echo "端口类型: $localport_type"
 echo "更新 iptables 规则..."
 
-# 删除旧规则函数
 delete_old_rules() {
     echo "删除旧规则..."
     
-    # 根据端口类型采用不同的删除策略[1](@ref)[2](@ref)
+    # 根据端口类型采用不同的删除策略
     if [ "$localport_type" = "single" ]; then
-        # 单端口删除逻辑（保持原有逻辑）
-        # PREROUTING
-        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "dpt:$localport_input" | awk '{print $1}' | sort -r))
+        # 单端口或连续范围删除逻辑（标准语法）
+        echo "删除标准语法规则..."
+        
+        # 转换端口格式：将可能输入的冒号范围转换为标准语法使用的连字符
+        local localport_std=$(echo "$localport_input" | tr ':' '-')
+        local remoteport_std=$(echo "$remoteport_input" | tr ':' '-')
+        
+        # PREROUTING - 匹配标准语法的端口规则（dpt 或 dpts）
+        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep -E "dpts?:$localport_std" | grep "to:$remote:$remoteport_std" | awk '{print $1}' | sort -r))
         for i in "${indices[@]}"; do
-            echo "删除 PREROUTING 规则 $i"
+            echo "删除 PREROUTING 规则 $i (标准语法)"
             iptables -t nat -D PREROUTING "$i"
         done
 
-        # POSTROUTING
-        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "$remote" | grep "$remoteport_input" | awk '{print $1}' | sort -r))
+        # POSTROUTING - 精确匹配目标IP和端口
+        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep -E "$remote" | grep -E "dpts?:$remoteport_std" | awk '{print $1}' | sort -r))
         for i in "${indices[@]}"; do
-            echo "删除 POSTROUTING 规则 $i"
+            echo "删除 POSTROUTING 规则 $i (标准语法)"
             iptables -t nat -D POSTROUTING "$i"
         done
     else
-        # 多端口删除逻辑（使用multiport匹配）[4](@ref)
+        # 多端口删除逻辑（使用multiport匹配）
+        echo "删除multiport规则..."
+        
         # PREROUTING - 使用multiport匹配删除
-        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "multiport dports $localport_input" | awk '{print $1}' | sort -r))
+        local indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "multiport dports $localport_input" | grep "to:$remote:$remoteport_input" | awk '{print $1}' | sort -r))
         for i in "${indices[@]}"; do
             echo "删除 PREROUTING 多端口规则 $i"
             iptables -t nat -D PREROUTING "$i"
         done
         
-        # POSTROUTING - 删除与目标IP相关的规则
-        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "$remote" | awk '{print $1}' | sort -r))
+        # POSTROUTING - 匹配multiport规则
+        indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "$remote" | grep "multiport dports $remoteport_input" | awk '{print $1}' | sort -r))
         for i in "${indices[@]}"; do
-            # 检查规则是否包含多端口特征
-            local rule_line=$(iptables -t nat -L POSTROUTING $i -n)
-            if echo "$rule_line" | grep -q "multiport"; then
-                echo "删除 POSTROUTING 多端口规则 $i"
-                iptables -t nat -D POSTROUTING "$i"
-            fi
+            echo "删除 POSTROUTING 多端口规则 $i"
+            iptables -t nat -D POSTROUTING "$i"
         done
     fi
 }
-
 # 执行删除旧规则
 delete_old_rules
 
