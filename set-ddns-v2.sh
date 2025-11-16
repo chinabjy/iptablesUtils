@@ -262,7 +262,7 @@ while true; do
                 
                 # 获取远程端口（你可以根据实际需求修改获取方式）
                 remoteport=$(grep -E "ddns-check-v2.sh" /etc/crontab | grep -E " $delport_input " | awk '{print $2}')
-                
+                echo "本地端口$delport_input 远程端口$remoteport"
                 if [ -z "$remoteport" ]; then
                     echo "未找到匹配的远程端口。"
                     exit 1
