@@ -154,24 +154,34 @@ delete_old_rules() {
 # 执行删除旧规则
 delete_old_rules
 
-# 在脚本的规则添加部分进行如下修改：
-
 # 删除旧规则后，添加新规则的部分应该这样写：
+# PREROUTING规则
 if [ "$localport_type" = "single" ]; then
-    # 单端口使用标准语法
-    iptables -t nat -A PREROUTING -p tcp --dport "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
-    iptables -t nat -A PREROUTING -p udp --dport "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
+    # 单端口或连续范围：使用标准语法
+    # 将用户输入的端口范围冒号(:)转换为标准语法认可的连字符(-)
+    localport_std=$(echo "$localport_input" | tr ':' '-')
+    remoteport_std=$(echo "$remoteport_input" | tr ':' '-')
+    
+    echo "添加单端口/连续范围转发规则（标准语法）..."
+    iptables -t nat -A PREROUTING -p tcp --dport "$localport_std" -j DNAT --to-destination "$remote:$remoteport_std"
+    iptables -t nat -A PREROUTING -p udp --dport "$localport_std" -j DNAT --to-destination "$remote:$remoteport_std"
 else
-    # 多端口使用multiport语法
+    # 多端口列表：使用multiport语法，保持用户输入的冒号格式
+    echo "添加多端口转发规则（multiport模块）..."
     iptables -t nat -A PREROUTING -p tcp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
     iptables -t nat -A PREROUTING -p udp -m multiport --dports "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
 fi
 
-# POSTROUTING规则也需要相应修改
+# POSTROUTING规则
 if [ "$localport_type" = "single" ]; then
-    iptables -t nat -A POSTROUTING -p tcp -d "$remote" --dport "$remoteport_input" -j SNAT --to-source "$local"
-    iptables -t nat -A POSTROUTING -p udp -d "$remote" --dport "$remoteport_input" -j SNAT --to-source "$local"
+    # 单端口或连续范围：使用标准语法
+    # 注意POSTROUTING规则中匹配的是远程端口（数据包离开本机去往目标机的端口）
+    remoteport_std=$(echo "$remoteport_input" | tr ':' '-')
+    
+    iptables -t nat -A POSTROUTING -p tcp -d "$remote" --dport "$remoteport_std" -j SNAT --to-source "$local"
+    iptables -t nat -A POSTROUTING -p udp -d "$remote" --dport "$remoteport_std" -j SNAT --to-source "$local"
 else
+    # 多端口列表：使用multiport语法
     iptables -t nat -A POSTROUTING -p tcp -d "$remote" -m multiport --dports "$remoteport_input" -j SNAT --to-source "$local"
     iptables -t nat -A POSTROUTING -p udp -d "$remote" -m multiport --dports "$remoteport_input" -j SNAT --to-source "$local"
 fi
