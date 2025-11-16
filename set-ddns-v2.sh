@@ -27,43 +27,6 @@ install_package() {
 }
 
 
-# 脚本：自动检测并安装 wget
-# 功能：检查 wget 是否已安装，若未安装则根据系统类型自动安装
-
-# 使用 command -v 检查 wget 命令是否存在[6](@ref)
-if command -v wget &> /dev/null; then
-    echo "wget 已经安装。"
-    exit 0
-fi
-
-echo "wget 未安装，开始自动安装..."
-
-# 检测系统发行版并使用相应的包管理器安装
-if [[ -f /etc/redhat-release ]]; then
-    # CentOS、RHEL 等基于 Red Hat 的系统[2](@ref)
-    echo "检测到 CentOS/RHEL 系统，使用 yum 安装..."
-    sudo yum install -y wget
-elif [[ -f /etc/debian_version ]]; then
-    # Debian、Ubuntu 等系统[7](@ref)[8](@ref)
-    echo "检测到 Debian/Ubuntu 系统，使用 apt 安装..."
-    sudo apt update
-    sudo apt install -y wget
-else
-    # 如果无法识别系统，给出通用安装建议
-    echo "无法自动识别系统类型。请手动安装 wget："
-    echo "  - Debian/Ubuntu: sudo apt install wget"
-    echo "  - CentOS/RHEL: sudo yum install wget"
-    echo "  - 其他系统请参考相应文档。"
-    exit 1
-fi
-
-# 再次验证安装是否成功
-if command -v wget &> /dev/null; then
-    echo "wget 安装成功！"
-else
-    echo "wget 安装可能失败，请检查上述错误信息。"
-    exit 1
-fi
 
 
 echo "正在检测系统并安装依赖..."
