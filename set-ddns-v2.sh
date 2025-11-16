@@ -197,6 +197,21 @@ while true; do
                 echo -e "${red}端口格式错误！支持单端口、范围(如8000:8010)或逗号分隔列表(如8080,8443)${black}"
                 continue
             fi
+                    # 查找 PREROUTING 链中的规则，匹配本地端口，获取远程IP和端口
+                    prerouting_rule=$(iptables -L PREROUTING -n -t nat --line-number | grep "dpt:$delport_input")
+                
+                    # 如果没有匹配的规则，退出
+                    if [ -z "$prerouting_rule" ]; then
+                        echo "没有找到匹配的转发规则，退出删除操作。"
+                        exit 1
+                    fi
+                
+                    # 从规则中提取远程 IP 和远程端口
+                    target_ip=$(echo "$prerouting_rule" | awk '{print $5}')
+                    target_port=$(echo "$prerouting_rule" | awk '{print $7}' | cut -d ':' -f2)
+                
+                    # 输出远程 IP 和远程端口
+                    echo "找到远程目标 IP：$target_ip，远程端口：$target_port"
 
             # 检查端口类型：单端口还是多端口
             if echo "$delport_input" | grep -qE '[,]'; then
@@ -260,21 +275,7 @@ while true; do
                 # 单端口删除规则
                 echo "检测到单端口，删除规则..."
                 
-                # 查找 PREROUTING 链中的规则，匹配本地端口，获取远程IP和端口
-                    prerouting_rule=$(iptables -L PREROUTING -n -t nat --line-number | grep "dpt:$delport_input")
-                
-                    # 如果没有匹配的规则，退出
-                    if [ -z "$prerouting_rule" ]; then
-                        echo "没有找到匹配的转发规则，退出删除操作。"
-                        exit 1
-                    fi
-                
-                    # 从规则中提取远程 IP 和远程端口
-                    target_ip=$(echo "$prerouting_rule" | awk '{print $5}')
-                    target_port=$(echo "$prerouting_rule" | awk '{print $7}' | cut -d ':' -f2)
-                
-                    # 输出远程 IP 和远程端口
-                    echo "找到远程目标 IP：$target_ip，远程端口：$target_port"
+
 
             
                 # 精确匹配：删除本地端口和远程端口完全匹配的任务
