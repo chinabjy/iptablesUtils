@@ -199,6 +199,14 @@ while true; do
 
             echo "检测到端口类型: $port_type"
 
+            # 判断是否包含冒号
+            if [[ "$delport_input" == *":"* ]]; then
+                # 如果包含冒号，执行特定操作 A
+                dpt_type="dpts"
+            else
+                # 如果不包含冒号，执行特定操作 B
+                dpt_type="dpt"
+            fi
             # 删除 PREROUTING 规则（根据端口类型采用不同策略）
             if [ "$port_type" = "multiport" ]; then
                 # 多端口：使用 multiport 匹配删除
@@ -209,7 +217,7 @@ while true; do
                 done
             else
                 # 单端口：使用传统方式删除
-                indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "dpt:$delport_input" | awk '{print $1}' | sort -r))
+                indices=($(iptables -t nat -L PREROUTING -n --line-number | grep "dpt_type:$delport_input" | awk '{print $1}' | sort -r))
                 for i in "${indices[@]}"; do
                     echo "删除 PREROUTING 规则 $i (端口: $delport_input)"
                     iptables -t nat -D PREROUTING "$i"
@@ -226,7 +234,7 @@ while true; do
                 done
             else
                 # 单端口：使用传统方式删除
-                indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "dpt:$delport_input" | awk '{print $1}' | sort -r))
+                indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "dpt_type:$delport_input" | awk '{print $1}' | sort -r))
                 for i in "${indices[@]}"; do
                     echo "删除 POSTROUTING 规则 $i (端口: $delport_input)"
                     iptables -t nat -D POSTROUTING "$i"
