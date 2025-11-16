@@ -153,13 +153,28 @@ delete_old_rules() {
 delete_old_rules
 
 # 删除旧规则后，添加新规则的部分应该这样写：
+
+# 如果包含逗号
+if [[ "$localport_input" == *","* ]]; then
+
+    dnat_target="$remote
+    
+# 如果包含冒号，但没有逗号
+elif [[ "$localport_input" == *":"* && "$input" != *","* ]]; then
+
+    dnat_target="$remote
+else
+    # 如果既没有逗号也没有冒号，代表单端口    
+    dnat_target="$remote:$remoteport_input"
+fi
+
 # PREROUTING规则
 if [ "$localport_type" = "single" ]; then
     # 单端口或连续范围：使用标准语法
 
     echo "添加单端口/连续范围转发规则（标准语法）..."
-    iptables -t nat -A PREROUTING -p tcp --dport "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
-    iptables -t nat -A PREROUTING -p udp --dport "$localport_input" -j DNAT --to-destination "$remote:$remoteport_input"
+    iptables -t nat -A PREROUTING -p tcp --dport "$localport_input" -j DNAT --to-destination "$dnat_target"
+    iptables -t nat -A PREROUTING -p udp --dport "$localport_input" -j DNAT --to-destination "$dnat_target"
 else
     # 多端口列表：使用multiport语法，保持用户输入的冒号格式
     echo "添加多端口转发规则（multiport模块）..."
