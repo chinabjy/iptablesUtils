@@ -198,7 +198,9 @@ while true; do
                 continue
             fi
                     # 查找 PREROUTING 链中的规则，匹配本地端口，获取远程IP和端口
-                    prerouting_rule=$(iptables -L PREROUTING -n -t nat --line-number | grep "dpt:$delport_input")
+                     #prerouting_rule=$(iptables -L PREROUTING -n -t nat --line-number | grep "dpt:$delport_input" | head -n 1)
+                     prerouting_rule=$(iptables -L PREROUTING -n -t nat --line-number | grep -E "dpts?:$delport_input|multiport.*dports.*$delport_input|dpt:$delport_input" | head -n 1)
+
                 
                     # 如果没有匹配的规则，退出
                     if [ -z "$prerouting_rule" ]; then
@@ -207,11 +209,16 @@ while true; do
                     fi
                 
                     # 从规则中提取远程 IP 和远程端口
-                    target_ip=$(echo "$prerouting_rule" | awk '{print $5}')
-                    target_port=$(echo "$prerouting_rule" | awk '{print $7}' | cut -d ':' -f2)
+                    target_ip=$(echo "$prerouting_rule" | awk '{print $7}')
+                    target_ip=$(echo "$prerouting_rule" | awk '{print $7}' | sed 's/.*://')
+
+                    #target_port=$(echo "$prerouting_rule" | awk '{print $9}' | cut -d ':' -f2)
+                    target_ip=$(echo "$prerouting_rule" | awk '{print $9}' | cut -d ':' -f2)  # 提取 IP
+                    target_port=$(echo "$prerouting_rule" | awk '{print $9}' | cut -d ':' -f3)  # 提取端口号
+
                 
                     # 输出远程 IP 和远程端口
-                    echo "找到远程目标 IP：$target_ip，远程端口：$target_port"
+                    echo "找到远程目标 IP：$target_ip，目标ip：$target_ip，远程端口：$target_port"
 
             # 检查端口类型：单端口还是多端口
             if echo "$delport_input" | grep -qE '[,]'; then
