@@ -160,7 +160,7 @@ while true; do
             read -p "本地端口号 (支持单端口/范围/逗号分隔，如: 8080,8000:8010,9000): " localport_input
             read -p "远程端口号 (格式需与本地端口对应): " remoteport_input
             read -p "目标 DDNS: " targetDDNS
-            read -p "绑定的本地IP地址: " localip
+            read -p "绑定的本地IP地址($local): " localip
 
             # 如果没有输入本地 IP，则使用自动获取的 IP 地址
             if [ -z "$localip" ]; then
