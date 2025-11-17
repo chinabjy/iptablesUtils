@@ -37,31 +37,48 @@ echo "正在检测系统并安装依赖..."
 # 定义包列表（关联数组声明，兼容旧版bash）
 declare -A PKG_MAP
 PKG_MAP["debian"]="wget dnsutils cron"
-PKG_MACK["centos"]="wget bind-utils crontabs"
+PKG_MAP["centos"]="wget bind-utils crontabs"  # 修正了拼写错误：PKG_MACK → PKG_MAP
 
-# 检测系统类型
+# 更可靠的系统检测逻辑
 if command -v apt-get &> /dev/null; then
     DISTRO="debian"
     INSTALL_CMD="apt install -y"
     CHECK_CMD="dpkg -s"
-elif command -v yum &> /dev/null; then
+elif command -v yum &> /dev/null || command -v dnf &> /dev/null; then
     DISTRO="centos"
-    INSTALL_CMD="yum install -y"
-    CHECK_CMD="rpm -q"
-elif command -v dnf &> /dev/null; then
-    DISTRO="centos"
-    INSTALL_CMD="dnf install -y"
+    # 优先使用 dnf，如果不可用则使用 yum
+    if command -v dnf &> /dev/null; then
+        INSTALL_CMD="dnf install -y"
+    else
+        INSTALL_CMD="yum install -y"
+    fi
     CHECK_CMD="rpm -q"
 else
     echo "不支持的包管理器"
     exit 1
 fi
 
+# 调试信息：检查变量值
+echo "=== 调试信息 ==="
+echo "检测到的 DISTRO: $DISTRO"
+echo "PKG_MAP 中的所有键: ${!PKG_MAP[@]}"
+echo "PKG_MAP 中的所有值: ${PKG_MAP[@]}"
+
 # 获取对应系统的包名
 PACKAGES="${PKG_MAP[$DISTRO]}"
 
+echo "=== 最终结果 ==="
 echo "检测到系统类型为: $DISTRO"
 echo "需要检查的包: $PACKAGES"
+
+# 检查包是否为空
+if [ -z "$PACKAGES" ]; then
+    echo "警告：PACKAGES 变量为空！"
+    echo "可能的原因："
+    echo "1. DISTRO 变量值 '${DISTRO}' 不在 PKG_MAP 的键中"
+    echo "2. PKG_MAP 数组定义有问题"
+fi
+
 
 # 检查并收集未安装的包
 MISSING_PACKAGES=""
