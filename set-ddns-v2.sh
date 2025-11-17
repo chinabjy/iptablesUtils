@@ -172,10 +172,10 @@ while true; do
 
     case $choice in
          1)
-            read -p "本地端口号 (支持单端口/范围/逗号分隔，如: 8080,8000:8010,9000): " localport_input
-            read -p "远程端口号 (格式需与本地端口对应): " remoteport_input
-            read -p "目标 DDNS: " targetDDNS
-            read -p "绑定的本地IP地址($local): " localip
+            read -p "本地端口号 (支持单端口/连续范围用冒号连接/不连续范围逗号分隔，如: 8080,8000:8010,9000): " localport_input
+            read -p "远程端口号 (单端口转发时可与本地端口不同，多端口转发必须与本地端口一致): " remoteport_input
+            read -p "目标地址/支持填写固定ip或域名: " targetDDNS
+            read -p "绑定的本地IP地址，直接回车默认($local): " localip
 
             # 如果没有输入本地 IP，则使用自动获取的 IP 地址
             if [ -z "$localip" ]; then
