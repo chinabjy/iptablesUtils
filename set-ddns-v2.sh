@@ -30,7 +30,41 @@ install_package() {
 
 
 echo "正在检测系统并安装依赖..."
-install_package wget bind-utils dnsutils cron
+#install_package wget bind-utils dnsutils cron
+
+packages="wget bind-utils dnsutils cron"
+
+# 检测包管理器并生成已安装包列表
+if command -v apt-get &> /dev/null; then
+    installed=$(apt list --installed 2>/dev/null | awk -F/ '{print $1}')
+    install_cmd="apt install -y"
+elif command -v yum &> /dev/null; then
+    installed=$(yum list installed 2>/dev/null | awk '{print $1}')
+    install_cmd="yum install -y"
+elif command -v dnf &> /dev/null; then
+    installed=$(dnf list installed 2>/dev/null | awk '{print $1}')
+    install_cmd="dnf install -y"
+else
+    echo "不支持的包管理器"
+    exit 1
+fi
+
+# 筛选需要安装的包
+to_install=()
+for pkg in $packages; do
+    if ! grep -qw "$pkg" <<< "$installed"; then
+        to_install+=("$pkg")
+    fi
+done
+
+# 安装缺失的包
+if [ ${#to_install[@]} -gt 0 ]; then
+    echo "正在安装缺失的包: ${to_install[*]}"
+    $install_cmd "${to_install[@]}"
+else
+    echo "所有包均已安装"
+fi
+
 
 # 下载 ddns-check-v2.sh
 cd /usr/local
