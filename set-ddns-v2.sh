@@ -32,8 +32,6 @@ install_package() {
 echo "正在检测系统并安装依赖..."
 #install_package wget bind-utils dnsutils cron
 
-#!/bin/bash
-
 # 定义包列表（关联数组声明，兼容旧版bash）
 declare -A PKG_MAP
 PKG_MAP["debian"]="wget dnsutils cron"
@@ -59,17 +57,17 @@ else
 fi
 
 # 调试信息：检查变量值
-echo "=== 调试信息 ==="
-echo "检测到的 DISTRO: $DISTRO"
-echo "PKG_MAP 中的所有键: ${!PKG_MAP[@]}"
-echo "PKG_MAP 中的所有值: ${PKG_MAP[@]}"
+# echo "=== 调试信息 ==="
+# echo "检测到的 DISTRO: $DISTRO"
+# echo "PKG_MAP 中的所有键: ${!PKG_MAP[@]}"
+# echo "PKG_MAP 中的所有值: ${PKG_MAP[@]}"
 
 # 获取对应系统的包名
 PACKAGES="${PKG_MAP[$DISTRO]}"
 
 echo "=== 最终结果 ==="
 echo "检测到系统类型为: $DISTRO"
-echo "需要检查的包: $PACKAGES"
+# echo "需要检查的包: $PACKAGES"
 
 # 检查包是否为空
 if [ -z "$PACKAGES" ]; then
