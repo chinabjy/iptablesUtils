@@ -32,21 +32,26 @@ install_package() {
 echo "正在检测系统并安装依赖..."
 #install_package wget bind-utils dnsutils cron
 
+#!/bin/bash
+
 # 定义包列表（关联数组声明，兼容旧版bash）
 declare -A PKG_MAP
 PKG_MAP["debian"]="wget dnsutils cron"
-PKG_MAP["centos"]="wget bind-utils crontabs"
+PKG_MACK["centos"]="wget bind-utils crontabs"
 
 # 检测系统类型
 if command -v apt-get &> /dev/null; then
     DISTRO="debian"
-    INSTALL_CMD="apt update -y && apt install -y"
+    INSTALL_CMD="apt install -y"
+    CHECK_CMD="dpkg -s"
 elif command -v yum &> /dev/null; then
     DISTRO="centos"
     INSTALL_CMD="yum install -y"
+    CHECK_CMD="rpm -q"
 elif command -v dnf &> /dev/null; then
     DISTRO="centos"
     INSTALL_CMD="dnf install -y"
+    CHECK_CMD="rpm -q"
 else
     echo "不支持的包管理器"
     exit 1
@@ -56,10 +61,37 @@ fi
 PACKAGES="${PKG_MAP[$DISTRO]}"
 
 echo "检测到系统类型为: $DISTRO"
-echo "即将安装的包: $PACKAGES"
+echo "需要检查的包: $PACKAGES"
 
-# 执行安装
-eval "$INSTALL_CMD $PACKAGES"
+# 检查并收集未安装的包
+MISSING_PACKAGES=""
+for pkg in $PACKAGES; do
+    if $CHECK_CMD "$pkg" &> /dev/null; then
+        echo "✓ $pkg 已安装"
+    else
+        echo "✗ $pkg 未安装"
+        MISSING_PACKAGES="$MISSING_PACKAGES $pkg"
+    fi
+done
+
+# 安装缺失的包
+if [ -n "$MISSING_PACKAGES" ]; then
+    echo "正在安装缺失的包: $MISSING_PACKAGES"
+    eval "$INSTALL_CMD $MISSING_PACKAGES"
+    
+    # 验证安装结果
+    echo "验证安装结果..."
+    for pkg in $MISSING_PACKAGES; do
+        if $CHECK_CMD "$pkg" &> /dev/null; then
+            echo "✓ $pkg 安装成功"
+        else
+            echo "✗ $pkg 安装失败"
+        fi
+    done
+else
+    echo "所有需要的包均已安装，无需额外操作。"
+fi
+
 
 
 # 下载 ddns-check-v2.sh
