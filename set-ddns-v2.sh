@@ -32,38 +32,34 @@ install_package() {
 echo "正在检测系统并安装依赖..."
 #install_package wget bind-utils dnsutils cron
 
-packages="wget bind-utils dnsutils cron"
+# 定义包列表（关联数组声明，兼容旧版bash）
+declare -A PKG_MAP
+PKG_MAP["debian"]="wget dnsutils cron"
+PKG_MAP["centos"]="wget bind-utils crontabs"
 
-# 检测包管理器并生成已安装包列表
+# 检测系统类型
 if command -v apt-get &> /dev/null; then
-    installed=$(apt list --installed 2>/dev/null | awk -F/ '{print $1}')
-    install_cmd="apt install -y"
+    DISTRO="debian"
+    INSTALL_CMD="apt update -y && apt install -y"
 elif command -v yum &> /dev/null; then
-    installed=$(yum list installed 2>/dev/null | awk '{print $1}')
-    install_cmd="yum install -y"
+    DISTRO="centos"
+    INSTALL_CMD="yum install -y"
 elif command -v dnf &> /dev/null; then
-    installed=$(dnf list installed 2>/dev/null | awk '{print $1}')
-    install_cmd="dnf install -y"
+    DISTRO="centos"
+    INSTALL_CMD="dnf install -y"
 else
     echo "不支持的包管理器"
     exit 1
 fi
 
-# 筛选需要安装的包
-to_install=()
-for pkg in $packages; do
-    if ! grep -qw "$pkg" <<< "$installed"; then
-        to_install+=("$pkg")
-    fi
-done
+# 获取对应系统的包名
+PACKAGES="${PKG_MAP[$DISTRO]}"
 
-# 安装缺失的包
-if [ ${#to_install[@]} -gt 0 ]; then
-    echo "正在安装缺失的包: ${to_install[*]}"
-    $install_cmd "${to_install[@]}"
-else
-    echo "所有包均已安装"
-fi
+echo "检测到系统类型为: $DISTRO"
+echo "即将安装的包: $PACKAGES"
+
+# 执行安装
+eval "$INSTALL_CMD $PACKAGES"
 
 
 # 下载 ddns-check-v2.sh
