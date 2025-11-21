@@ -369,7 +369,7 @@ while true; do
                 done
             else
                 # 单端口：使用传统方式删除
-                indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "$dpt_type:$remoteport" | awk '{print $1}' | sort -r))
+                indices=($(iptables -t nat -L POSTROUTING -n --line-number | grep "$target_ip" | grep "$dpt_type:$remoteport" | awk '{print $1}' | sort -r))
                 for i in "${indices[@]}"; do
                     echo "删除 POSTROUTING 规则 $i (端口: $delport_input)"
                     iptables -t nat -D POSTROUTING "$i"
