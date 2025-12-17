@@ -243,7 +243,9 @@ while true; do
             IPrecordfile="${localport_input}[${targetDDNS}:${remoteport_input}]"
             # 开机强制刷新一次
             chmod +x /etc/rc.d/rc.local
-            echo "rm -f /root/$IPrecordfile" >> /etc/rc.d/rc.local
+            #echo "rm -f /root/$IPrecordfile" >> /etc/rc.d/rc.local
+            echo "rm -f /root/$IPrecordfile" >> $RCLOCAL
+            
             # 写入 rc.local 启动命令（避免重复）
             grep -F "/usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS" $RCLOCAL >/dev/null 2>&1 || \
                 echo "/bin/bash /usr/local/ddns-check-v2.sh $localport_input $remoteport_input $targetDDNS $IPrecordfile $localip &>> /root/iptables_${localport_input}.log" >> $RCLOCAL
