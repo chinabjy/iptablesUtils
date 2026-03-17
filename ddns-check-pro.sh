@@ -1,5 +1,6 @@
 #!/bin/bash
 # ddns-check.sh - DDNS自动更新iptables端口转发，支持多端口、多源IP
+# 优化删除旧规则逻辑，支持IP网段变化，不依赖行号
 
 # 暂停 0~10 秒，避免多脚本同时运行冲突
 sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*10}')"
@@ -35,23 +36,19 @@ delete_old_rules() {
     local remote=$2
     local remoteport=$3
     local allowed_source=$4
-    local proto
 
     log_info "删除旧规则: $localport->$remoteport, 目标IP: $remote, 源: $allowed_source"
 
     for proto in tcp udp; do
         for src in $allowed_source; do
-            # PREROUTING
-            rules=$(iptables -t nat -L PREROUTING --line-numbers -n | awk -v port="$localport" -v src="$src" -v p="$proto" '$0 ~ p && $0 ~ "dpt:" port && $0 ~ src {print $1}' | tac)
-            for r in $rules; do
-                iptables -t nat -D PREROUTING $r
-                log_info "删除PREROUTING规则 #$r ($proto, $src)"
+            # PREROUTING 删除旧规则
+            iptables -t nat -S PREROUTING | grep " -s $src " | grep " -p $proto " | grep "dpt:$localport" | while read r; do
+                iptables -t nat $(echo "$r" | sed 's/^-A/-D/') && log_info "删除PREROUTING规则: $r"
             done
-            # POSTROUTING
-            rules=$(iptables -t nat -L POSTROUTING --line-numbers -n | awk -v port="$remoteport" -v dst="$remote" -v src="$src" -v p="$proto" '$0 ~ p && $0 ~ dst && $0 ~ "dpt:" port && $0 ~ src {print $1}' | tac)
-            for r in $rules; do
-                iptables -t nat -D POSTROUTING $r
-                log_info "删除POSTROUTING规则 #$r ($proto, $src)"
+
+            # POSTROUTING 删除旧规则
+            iptables -t nat -S POSTROUTING | grep " -s $src " | grep " -p $proto " | grep "dpt:$remoteport" | grep " -d $remote " | while read r; do
+                iptables -t nat $(echo "$r" | sed 's/^-A/-D/') && log_info "删除POSTROUTING规则: $r"
             done
         done
     done
