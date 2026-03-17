@@ -96,6 +96,23 @@ fi
 log_success "解析成功: $remotehost -> $remote"
 
 ########################################
+# IP变化检测（新增）
+########################################
+old_ip=""
+
+if [ -f "$tempFile" ]; then
+    old_ip=$(cat "$tempFile")
+fi
+
+if [ "$remote" = "$old_ip" ]; then
+    log_info "IP未变化 ($remote)，跳过"
+    exit 0
+fi
+
+log_info "IP变化: $old_ip -> $remote"
+echo "$remote" > "$tempFile"
+
+########################################
 # 🔥 永远先删（核心）
 ########################################
 delete_old_rules "$localport" "$remoteport"
