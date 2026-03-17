@@ -1,8 +1,14 @@
 #!/bin/bash
-# ddns-check-pro.sh - 修复版（绝不堆积规则）
+# ddns-check-pro.sh - 终极稳定版（不会堆积规则）
 
-sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*5}')"
+########################################
+# 随机延迟（避免并发）
+########################################
+sleep "$(awk 'BEGIN{srand(); printf "%.3f", rand()*3}')"
 
+########################################
+# 颜色 & 日志
+########################################
 RED="\033[31m"
 GREEN="\033[32m"
 BLUE="\033[34m"
@@ -14,54 +20,50 @@ log_error()   { log "${RED}[ERROR]${RESET} $1"; }
 log_info()    { log "${BLUE}[INFO]${RESET} $1"; }
 
 ########################################
-# 强力删除规则（关键修复）
-########################################
-delete_old_rules() {
-    local localport=$1
-    local remoteport=$2
-    local allowed_source=$3
-
-    log_info "清理旧规则 (不依赖IP)"
-
-    for proto in tcp udp; do
-        for src in $allowed_source; do
-
-            # PREROUTING（只按端口删）
-            iptables -t nat -S PREROUTING | \
-            grep " -p $proto " | \
-            grep -E "dport(s)?(:| )$localport" | \
-            grep " -s $src " | \
-            while read r; do
-                iptables -t nat $(echo "$r" | sed 's/^-A/-D/')
-                log_info "删除PREROUTING: $r"
-            done
-
-            # POSTROUTING（不再匹配 -d IP）
-            iptables -t nat -S POSTROUTING | \
-            grep " -p $proto " | \
-            grep -E "dport(s)?(:| )$remoteport" | \
-            grep " -s $src " | \
-            while read r; do
-                iptables -t nat $(echo "$r" | sed 's/^-A/-D/')
-                log_info "删除POSTROUTING: $r"
-            done
-
-        done
-    done
-}
-
-########################################
 # 防重复添加
 ########################################
 iptables_no_dup() {
     local cmd="$@"
-    local check_cmd=$(echo "$cmd" | sed -e 's/-A/-C/g')
+    local check_cmd=$(echo "$cmd" | sed 's/-A/-C/')
 
     if ! eval "iptables $check_cmd" >/dev/null 2>&1; then
         eval "iptables $cmd" && log_success "添加: $cmd" || log_error "失败: $cmd"
     else
         log_info "已存在: $cmd"
     fi
+}
+
+########################################
+# 🔥 强力清理规则（关键）
+# 👉 不看 IP、不看 source，只看端口
+########################################
+delete_old_rules() {
+    local localport=$1
+    local remoteport=$2
+
+    log_info "清理所有 $localport / $remoteport 相关规则"
+
+    for proto in tcp udp; do
+
+        # PREROUTING
+        iptables -t nat -S PREROUTING | \
+        grep " -p $proto " | \
+        grep -E "dport(s)?(:| )$localport" | \
+        while read r; do
+            iptables -t nat $(echo "$r" | sed 's/^-A/-D/')
+            log_info "删除 PREROUTING: $r"
+        done
+
+        # POSTROUTING
+        iptables -t nat -S POSTROUTING | \
+        grep " -p $proto " | \
+        grep -E "dport(s)?(:| )$remoteport" | \
+        while read r; do
+            iptables -t nat $(echo "$r" | sed 's/^-A/-D/')
+            log_info "删除 POSTROUTING: $r"
+        done
+
+    done
 }
 
 ########################################
@@ -75,25 +77,32 @@ local=$5
 allowed_source=$6
 
 if [ -z "$remotehost" ]; then
-    log_error "Usage: $0 localport remoteport remotehost [file] [localIP] [source]"
+    log_error "Usage: $0 localport remoteport remotehost [tempFile] [localIP] [allowedSource]"
     exit 1
 fi
 
-log_info "参数: $*"
+log_info "参数: localport=$localport remoteport=$remoteport host=$remotehost local=$local source=$allowed_source"
 
+########################################
+# 解析域名
+########################################
 remote=$(getent hosts "$remotehost" | awk '{print $1}' | head -1)
-[ -z "$remote" ] && log_error "解析失败" && exit 1
 
-log_success "解析: $remotehost -> $remote"
+if [ -z "$remote" ]; then
+    log_error "域名解析失败: $remotehost"
+    exit 1
+fi
+
+log_success "解析成功: $remotehost -> $remote"
 
 ########################################
-# ⭐ 不再依赖IP变化（关键改动）
+# 🔥 永远先删（核心）
 ########################################
+delete_old_rules "$localport" "$remoteport"
 
-# 永远先删
-delete_old_rules "$localport" "$remoteport" "$allowed_source"
-
+########################################
 # 端口处理
+########################################
 if echo "$localport" | grep -qE '[:,]'; then
     dnat_port="-m multiport --dports $localport"
     snat_port="-m multiport --dports $remoteport"
@@ -109,19 +118,31 @@ fi
 ########################################
 for src in $allowed_source; do
 
-    iptables_no_dup -t nat -A PREROUTING -s "$src" -p tcp $dnat_port -j DNAT --to-destination $dnat_target
-    iptables_no_dup -t nat -A PREROUTING -s "$src" -p udp $dnat_port -j DNAT --to-destination $dnat_target
+    # DNAT
+    iptables_no_dup -t nat -A PREROUTING -s "$src" -p tcp $dnat_port \
+        -j DNAT --to-destination $dnat_target
 
-    iptables_no_dup -t nat -A POSTROUTING -s "$src" -p tcp $snat_port -j SNAT --to-source "$local"
-    iptables_no_dup -t nat -A POSTROUTING -s "$src" -p udp $snat_port -j SNAT --to-source "$local"
+    iptables_no_dup -t nat -A PREROUTING -s "$src" -p udp $dnat_port \
+        -j DNAT --to-destination $dnat_target
+
+    # 🔥 SNAT（必须带 -d）
+    iptables_no_dup -t nat -A POSTROUTING -s "$src" -p tcp -d "$remote" $snat_port \
+        -j SNAT --to-source "$local"
+
+    iptables_no_dup -t nat -A POSTROUTING -s "$src" -p udp -d "$remote" $snat_port \
+        -j SNAT --to-source "$local"
 
 done
 
 ########################################
 # 验证
 ########################################
-log_info "当前规则："
+log_info "当前规则检查："
+
+echo "---- PREROUTING ----"
 iptables -t nat -L PREROUTING -n | grep "$localport"
+
+echo "---- POSTROUTING ----"
 iptables -t nat -L POSTROUTING -n | grep "$remoteport"
 
-log_success "完成"
+log_success "=== 执行完成 ==="
