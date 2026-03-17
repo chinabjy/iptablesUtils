@@ -143,12 +143,11 @@ for src in $allowed_source; do
         -j DNAT --to-destination $dnat_target
 
     # 🔥 SNAT（必须带 -d）
-    iptables_no_dup -t nat -A POSTROUTING -s "$src" -p tcp -d "$remote" $snat_port \
+    iptables_no_dup -t nat -A POSTROUTING -p tcp -d "$remote" $snat_port \
         -j SNAT --to-source "$local"
 
-    iptables_no_dup -t nat -A POSTROUTING -s "$src" -p udp -d "$remote" $snat_port \
+    iptables_no_dup -t nat -A POSTROUTING -p udp -d "$remote" $snat_port \
         -j SNAT --to-source "$local"
-
 done
 
 ########################################
